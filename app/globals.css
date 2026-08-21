@@ -25,6 +25,9 @@
 
 html {
   scroll-behavior: smooth;
+  width: 100%;
+  min-width: 320px;
+  overflow-x: hidden;
 }
 
 /* =========================
@@ -33,30 +36,52 @@ html {
 
 body {
   margin: 0;
+  width: 100%;
   min-width: 320px;
+  min-height: 100vh;
+
   background: var(--background);
   color: var(--foreground);
+
   font-family: Arial, Helvetica, sans-serif;
+
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
   line-height: 1.5;
   font-size: 16px;
+
+  overflow-x: hidden;
 }
 
 /* =========================
-   RESPONSIVE TYPOGRAPHY
+   ROOT / NEXT
 ========================= */
 
-@media (max-width: 640px) {
-  body {
-    font-size: 15px;
-  }
+#__next {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
 }
 
-@media (min-width: 1024px) {
-  body {
-    font-size: 16px;
-  }
+/* =========================
+   IMAGES
+========================= */
+
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* =========================
+   LINKS
+========================= */
+
+a {
+  color: inherit;
+  text-decoration: none;
+  max-width: 100%;
 }
 
 /* =========================
@@ -68,10 +93,12 @@ input,
 select,
 textarea {
   font: inherit;
+  max-width: 100%;
 }
 
 button {
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 button:disabled {
@@ -81,7 +108,16 @@ button:disabled {
 input,
 select,
 textarea {
+  width: 100%;
   max-width: 100%;
+}
+
+/* Prevent long text from breaking layout */
+
+input,
+textarea,
+select {
+  min-width: 0;
 }
 
 /* =========================
@@ -113,6 +149,44 @@ textarea::placeholder {
 }
 
 /* =========================
+   TABLE RESPONSIVENESS
+========================= */
+
+/*
+  Page.tsx already uses overflow-x-auto
+  around the table.
+
+  These rules make sure very long
+  usernames/emails/IDs don't break
+  the page layout.
+*/
+
+table {
+  max-width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  max-width: 100%;
+}
+
+td,
+th {
+  overflow-wrap: break-word;
+}
+
+/* =========================
+   LONG TEXT
+========================= */
+
+.break-all,
+.break-words {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* =========================
    SCROLLBAR
 ========================= */
 
@@ -135,6 +209,17 @@ textarea::placeholder {
 }
 
 /* =========================
+   MOBILE SCROLLBAR
+========================= */
+
+@media (max-width: 640px) {
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+}
+
+/* =========================
    NUMBER INPUT
 ========================= */
 
@@ -149,11 +234,135 @@ input[type="number"] {
 }
 
 /* =========================
+   RESPONSIVE TYPOGRAPHY
+========================= */
+
+@media (max-width: 640px) {
+  body {
+    font-size: 15px;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1023px) {
+  body {
+    font-size: 15.5px;
+  }
+}
+
+@media (min-width: 1024px) {
+  body {
+    font-size: 16px;
+  }
+}
+
+/* =========================
+   SMALL MOBILE DEVICES
+========================= */
+
+@media (max-width: 400px) {
+  body {
+    font-size: 14px;
+  }
+
+  /*
+    Prevent buttons/text from becoming
+    wider than the screen.
+  */
+
+  button,
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+  }
+}
+
+/* =========================
+   MOBILE TABLE
+========================= */
+
+@media (max-width: 640px) {
+  /*
+    The table in page.tsx remains horizontally
+    scrollable instead of breaking the layout.
+  */
+
+  .overflow-x-auto {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /*
+    Long email / image URLs / IDs
+    won't force the page wider.
+  */
+
+  td,
+  th {
+    overflow-wrap: anywhere;
+  }
+}
+
+/* =========================
+   TABLET
+========================= */
+
+@media (min-width: 641px) and (max-width: 1023px) {
+  .overflow-x-auto {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* =========================
+   TOUCH DEVICES
+========================= */
+
+@media (hover: none) and (pointer: coarse) {
+  button,
+  a,
+  label {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* =========================
    REDUCE MOTION
 ========================= */
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* =========================
+   LANDSCAPE MOBILE
+========================= */
+
+@media (max-width: 900px) and (orientation: landscape) {
+  body {
+    min-height: 100vh;
+  }
+}
+
+/* =========================
+   VERY LARGE SCREENS
+========================= */
+
+@media (min-width: 1536px) {
+  body {
+    font-size: 16px;
   }
 }
