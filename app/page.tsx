@@ -13,18 +13,17 @@ interface User {
   updatedAt?: string;
 }
 
-const API_URL = "https://crud-management-backend.onrender.com";
+const API_URL =
+  "https://crud-management-backend.onrender.com";
 
-// =====================================================
-// IMAGE URL HELPER
-// =====================================================
+// =========================
+// HELPERS
+// =========================
 
 const getImageUrl = (imagePath?: string) => {
-  if (!imagePath) {
-    return "";
-  }
+  if (!imagePath) return "";
 
-  // If MongoDB already contains complete URL
+  // Already complete URL
   if (
     imagePath.startsWith("http://") ||
     imagePath.startsWith("https://")
@@ -32,59 +31,27 @@ const getImageUrl = (imagePath?: string) => {
     return imagePath;
   }
 
-  // MongoDB contains:
-  // /uploads/filename.jpg
-  //
-  // Convert it into:
-  // https://crud-management-backend.onrender.com/uploads/filename.jpg
-
-  return `${API_URL}${imagePath.startsWith("/") ? "" : "/"}${imagePath}`;
+  // Backend stores /uploads/filename
+  return `${API_URL}${
+    imagePath.startsWith("/") ? "" : "/"
+  }${imagePath}`;
 };
 
-// =====================================================
-// TIME AGO
-// =====================================================
-
 const getTimeAgo = (date?: string) => {
-  if (!date) {
-    return "Unknown time";
-  }
+  if (!date) return "Unknown time";
 
-  const createdTime = new Date(date).getTime();
-  const currentTime = Date.now();
+  const created = new Date(date).getTime();
+  const now = Date.now();
 
-  const difference = Math.max(
-    0,
-    currentTime - createdTime
-  );
+  const difference = Math.max(0, now - created);
 
-  const seconds = Math.floor(
-    difference / 1000
-  );
-
-  const minutes = Math.floor(
-    seconds / 60
-  );
-
-  const hours = Math.floor(
-    minutes / 60
-  );
-
-  const days = Math.floor(
-    hours / 24
-  );
-
-  const weeks = Math.floor(
-    days / 7
-  );
-
-  const months = Math.floor(
-    days / 30
-  );
-
-  const years = Math.floor(
-    days / 365
-  );
+  const seconds = Math.floor(difference / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  const weeks = Math.floor(days / 7);
+  const months = Math.floor(days / 30);
+  const years = Math.floor(days / 365);
 
   if (seconds < 60) {
     return "Just now";
@@ -125,36 +92,26 @@ const getTimeAgo = (date?: string) => {
   } ago`;
 };
 
-// =====================================================
-// MAIN
-// =====================================================
+// =========================
+// MAIN COMPONENT
+// =========================
 
 export default function Home() {
-  // ===================================================
-  // USERS
-  // ===================================================
-
   const [users, setUsers] = useState<User[]>([]);
 
-  // ===================================================
-  // FORM
-  // ===================================================
+  // =========================
+  // FORM STATES
+  // =========================
 
   const [userName, setUserName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [role, setRole] =
-    useState<"student" | "trainer">(
-      "student"
-    );
+    useState<"student" | "trainer">("student");
 
   const [editingId, setEditingId] =
     useState<string | null>(null);
-
-  // ===================================================
-  // IMAGE
-  // ===================================================
 
   const [selectedImage, setSelectedImage] =
     useState<File | null>(null);
@@ -162,18 +119,14 @@ export default function Home() {
   const [selectedImageName, setSelectedImageName] =
     useState("");
 
-  const [currentImage, setCurrentImage] =
-    useState("");
-
   const fileInputRef =
     useRef<HTMLInputElement | null>(null);
 
-  // ===================================================
-  // LOADING
-  // ===================================================
+  // =========================
+  // LOADING STATES
+  // =========================
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [deletingId, setDeletingId] =
     useState<string | null>(null);
@@ -187,19 +140,16 @@ export default function Home() {
   const [uploadingImage, setUploadingImage] =
     useState(false);
 
-  // ===================================================
+  // =========================
   // MESSAGES
-  // ===================================================
+  // =========================
 
-  const [message, setMessage] =
-    useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
-  const [error, setError] =
-    useState("");
-
-  // ===================================================
+  // =========================
   // DELETE MODALS
-  // ===================================================
+  // =========================
 
   const [deleteUser, setDeleteUser] =
     useState<User | null>(null);
@@ -207,29 +157,25 @@ export default function Home() {
   const [showDeleteAllModal, setShowDeleteAllModal] =
     useState(false);
 
-  // ===================================================
-  // MODES
-  // ===================================================
+  // =========================
+  // OPERATION STATES
+  // =========================
 
-  const isEditMode =
-    editingId !== null;
+  const isEditMode = editingId !== null;
 
   const isDeleteMode =
-    deletingId !== null ||
-    deletingAll;
+    deletingId !== null || deletingAll;
 
   const isBusy =
     loading ||
     uploadingImage ||
     isDeleteMode;
 
-  // ===================================================
-  // MESSAGE
-  // ===================================================
+  // =========================
+  // SUCCESS MESSAGE
+  // =========================
 
-  const showMessage = (
-    text: string
-  ) => {
+  const showMessage = (text: string) => {
     setMessage(text);
     setError("");
 
@@ -238,24 +184,22 @@ export default function Home() {
     }, 4000);
   };
 
-  // ===================================================
-  // ERROR
-  // ===================================================
+  // =========================
+  // ERROR MESSAGE
+  // =========================
 
-  const showError = (
-    text: string
-  ) => {
+  const showError = (text: string) => {
     setError(text);
     setMessage("");
 
     setTimeout(() => {
       setError("");
-    }, 5000);
+    }, 4000);
   };
 
-  // ===================================================
+  // =========================
   // FETCH USERS
-  // ===================================================
+  // =========================
 
   const fetchUsers = async () => {
     try {
@@ -266,8 +210,7 @@ export default function Home() {
         `${API_URL}/users/fetch`
       );
 
-      const result =
-        await response.json();
+      const result = await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -276,14 +219,10 @@ export default function Home() {
         );
       }
 
-      setUsers(
-        Array.isArray(result.data)
-          ? result.data
-          : []
-      );
-    } catch (err: any) {
+      setUsers(result.data || []);
+    } catch (error: any) {
       showError(
-        err.message ||
+        error.message ||
           "Something went wrong"
       );
     } finally {
@@ -291,17 +230,13 @@ export default function Home() {
     }
   };
 
-  // ===================================================
-  // INITIAL FETCH
-  // ===================================================
-
   useEffect(() => {
     fetchUsers();
   }, []);
 
-  // ===================================================
+  // =========================
   // RESET FORM
-  // ===================================================
+  // =========================
 
   const resetForm = () => {
     setUserName("");
@@ -314,62 +249,47 @@ export default function Home() {
     setSelectedImage(null);
     setSelectedImageName("");
 
-    setCurrentImage("");
-
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  // ===================================================
+  // =========================
   // IMAGE SELECT
-  // ===================================================
+  // =========================
 
   const handleImageChange = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const file =
-      e.target.files?.[0];
+    const file = e.target.files?.[0];
 
     if (!file) {
       return;
     }
 
-    // Allowed file types
     const allowedTypes = [
       "image/png",
       "image/jpeg",
-      "image/jpg",
     ];
 
-    if (
-      !allowedTypes.includes(
-        file.type
-      )
-    ) {
+    if (!allowedTypes.includes(file.type)) {
       showError(
         "Only PNG and JPEG images are allowed."
       );
 
       e.target.value = "";
-
       setSelectedImage(null);
       setSelectedImageName("");
 
       return;
     }
 
-    // 5 MB limit
-    if (
-      file.size >
-      5 * 1024 * 1024
-    ) {
+    if (file.size > 5 * 1024 * 1024) {
       showError(
         "File too large! Maximum size is 5 MB."
       );
 
       e.target.value = "";
-
       setSelectedImage(null);
       setSelectedImageName("");
 
@@ -383,9 +303,9 @@ export default function Home() {
     setError("");
   };
 
-  // ===================================================
+  // =========================
   // UPLOAD IMAGE
-  // ===================================================
+  // =========================
 
   const uploadImage = async () => {
     if (!selectedImage) {
@@ -395,25 +315,22 @@ export default function Home() {
     try {
       setUploadingImage(true);
 
-      const formData =
-        new FormData();
+      const formData = new FormData();
 
       formData.append(
         "image",
         selectedImage
       );
 
-      const response =
-        await fetch(
-          `${API_URL}/api/profile/upload`,
-          {
-            method: "POST",
-            body: formData,
-          }
-        );
+      const response = await fetch(
+        `${API_URL}/api/profile/upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
-      const result =
-        await response.json();
+      const result = await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -422,19 +339,10 @@ export default function Home() {
         );
       }
 
-      /*
-        Backend returns:
-
-        /uploads/filename.jpg
-
-        This path is saved
-        inside MongoDB.
-      */
-
       return result.data.url;
-    } catch (err: any) {
+    } catch (error: any) {
       throw new Error(
-        err.message ||
+        error.message ||
           "Image upload failed"
       );
     } finally {
@@ -442,44 +350,20 @@ export default function Home() {
     }
   };
 
-  // ===================================================
+  // =========================
   // EDIT USER
-  // ===================================================
+  // =========================
 
-  const handleEdit = (
-    user: User
-  ) => {
-    // Cannot edit while deleting
+  const handleEdit = (user: User) => {
     if (isDeleteMode) {
       return;
     }
 
-    setUserName(
-      user.userName || ""
-    );
-
-    setEmail(
-      user.email || ""
-    );
-
+    setUserName(user.userName);
+    setEmail(user.email);
+    setRole(user.role);
     setPassword("");
 
-    setRole(
-      user.role || "student"
-    );
-
-    // ================================================
-    // IMPORTANT:
-    // Show existing MongoDB image in edit mode
-    // ================================================
-
-    setCurrentImage(
-      getImageUrl(
-        user.profileImage
-      )
-    );
-
-    // New image starts empty
     setSelectedImage(null);
     setSelectedImageName("");
 
@@ -487,9 +371,7 @@ export default function Home() {
       fileInputRef.current.value = "";
     }
 
-    setEditingId(
-      user._id
-    );
+    setEditingId(user._id);
 
     setMessage("");
     setError("");
@@ -500,26 +382,21 @@ export default function Home() {
     });
   };
 
-  // ===================================================
-  // SUBMIT
-  // ===================================================
+  // =========================
+  // CREATE / UPDATE
+  // =========================
 
   const handleSubmit = async (
     e: React.FormEvent
   ) => {
     e.preventDefault();
 
-    // Cannot save/update while deleting
     if (isDeleteMode) {
       return;
     }
 
     setMessage("");
     setError("");
-
-    // ================================================
-    // VALIDATION
-    // ================================================
 
     if (
       !userName.trim() ||
@@ -528,7 +405,6 @@ export default function Home() {
       showError(
         "Please fill all required fields."
       );
-
       return;
     }
 
@@ -539,32 +415,25 @@ export default function Home() {
       showError(
         "Password is required for a new user."
       );
-
       return;
     }
 
     try {
       setLoading(true);
 
-      // ==============================================
+      // =========================
       // UPDATE USER
-      // ==============================================
+      // =========================
 
       if (editingId) {
-        setUpdatingId(
-          editingId
-        );
+        setUpdatingId(editingId);
 
-        let newProfileImage:
+        let profileImage:
           | string
           | undefined;
 
-        // ============================================
-        // IF NEW IMAGE SELECTED
-        // ============================================
-
         if (selectedImage) {
-          newProfileImage =
+          profileImage =
             await uploadImage();
         }
 
@@ -579,45 +448,34 @@ export default function Home() {
         } = {
           userName:
             userName.trim(),
-
           email:
-            email.trim().toLowerCase(),
-
+            email.trim(),
           role,
         };
 
-        // Password only if user entered new password
-        if (
-          password.trim()
-        ) {
+        if (password.trim()) {
           updateData.password =
             password.trim();
         }
 
-        // Only update image if new image selected
-        if (
-          newProfileImage
-        ) {
+        if (profileImage) {
           updateData.profileImage =
-            newProfileImage;
+            profileImage;
         }
 
-        const response =
-          await fetch(
-            `${API_URL}/user/update/${editingId}`,
-            {
-              method: "PUT",
-
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
-
-              body: JSON.stringify(
-                updateData
-              ),
-            }
-          );
+        const response = await fetch(
+          `${API_URL}/user/update/${editingId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify(
+              updateData
+            ),
+          }
+        );
 
         const result =
           await response.json();
@@ -641,45 +499,37 @@ export default function Home() {
         return;
       }
 
-      // ==============================================
+      // =========================
       // CREATE USER
-      // ==============================================
+      // =========================
 
       let profileImage = "";
 
-      // Upload image first
       if (selectedImage) {
         profileImage =
           await uploadImage();
       }
 
-      const response =
-        await fetch(
-          `${API_URL}/user/save`,
-          {
-            method: "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            body: JSON.stringify({
-              userName:
-                userName.trim(),
-
-              email:
-                email.trim().toLowerCase(),
-
-              password:
-                password.trim(),
-
-              role,
-
-              profileImage,
-            }),
-          }
-        );
+      const response = await fetch(
+        `${API_URL}/user/save`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            userName:
+              userName.trim(),
+            email:
+              email.trim(),
+            password:
+              password.trim(),
+            role,
+            profileImage,
+          }),
+        }
+      );
 
       const result =
         await response.json();
@@ -699,9 +549,9 @@ export default function Home() {
       resetForm();
 
       await fetchUsers();
-    } catch (err: any) {
+    } catch (error: any) {
       showError(
-        err.message ||
+        error.message ||
           "Something went wrong"
       );
     } finally {
@@ -710,19 +560,17 @@ export default function Home() {
     }
   };
 
-  // ===================================================
-  // DELETE CLICK
-  // ===================================================
+  // =========================
+  // DELETE USER CLICK
+  // =========================
 
   const handleDeleteClick = (
     user: User
   ) => {
-    // Delete disabled during edit
     if (isEditMode) {
       return;
     }
 
-    // Another delete already running
     if (isDeleteMode) {
       return;
     }
@@ -733,9 +581,9 @@ export default function Home() {
     setError("");
   };
 
-  // ===================================================
-  // CONFIRM DELETE
-  // ===================================================
+  // =========================
+  // CONFIRM DELETE USER
+  // =========================
 
   const confirmDelete = async () => {
     if (!deleteUser) {
@@ -750,13 +598,12 @@ export default function Home() {
       setMessage("");
       setError("");
 
-      const response =
-        await fetch(
-          `${API_URL}/user/delete/${deleteUser._id}`,
-          {
-            method: "DELETE",
-          }
-        );
+      const response = await fetch(
+        `${API_URL}/user/delete/${deleteUser._id}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       const result =
         await response.json();
@@ -776,11 +623,11 @@ export default function Home() {
       );
 
       await fetchUsers();
-    } catch (err: any) {
+    } catch (error: any) {
       setDeleteUser(null);
 
       showError(
-        err.message ||
+        error.message ||
           "Something went wrong"
       );
     } finally {
@@ -788,17 +635,15 @@ export default function Home() {
     }
   };
 
-  // ===================================================
+  // =========================
   // DELETE ALL CLICK
-  // ===================================================
+  // =========================
 
   const handleDeleteAllClick = () => {
-    // Disabled during edit
     if (isEditMode) {
       return;
     }
 
-    // Disabled during operation
     if (
       isDeleteMode ||
       loading
@@ -806,92 +651,83 @@ export default function Home() {
       return;
     }
 
-    if (
-      users.length === 0
-    ) {
+    if (users.length === 0) {
       showError(
         "There are no users to delete."
       );
-
       return;
     }
 
-    setShowDeleteAllModal(
-      true
-    );
+    setShowDeleteAllModal(true);
 
     setMessage("");
     setError("");
   };
 
-  // ===================================================
+  // =========================
   // CONFIRM DELETE ALL
-  // ===================================================
+  // =========================
 
-  const confirmDeleteAll =
-    async () => {
-      try {
-        setDeletingAll(true);
+  const confirmDeleteAll = async () => {
+    try {
+      setDeletingAll(true);
 
-        setMessage("");
-        setError("");
+      setMessage("");
+      setError("");
 
-        const response =
-          await fetch(
-            `${API_URL}/users/delete-all`,
-            {
-              method: "DELETE",
-            }
-          );
-
-        const result =
-          await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            result.message ||
-              "Failed to delete all users"
-          );
+      const response = await fetch(
+        `${API_URL}/users/delete-all`,
+        {
+          method: "DELETE",
         }
+      );
 
-        setShowDeleteAllModal(
-          false
-        );
+      const result =
+        await response.json();
 
-        resetForm();
-
-        showMessage(
+      if (!response.ok) {
+        throw new Error(
           result.message ||
-            "All users deleted successfully!"
+            "Failed to delete all users"
         );
-
-        await fetchUsers();
-      } catch (err: any) {
-        setShowDeleteAllModal(
-          false
-        );
-
-        showError(
-          err.message ||
-            "Something went wrong"
-        );
-      } finally {
-        setDeletingAll(false);
       }
-    };
 
-  // ===================================================
+      setShowDeleteAllModal(
+        false
+      );
+
+      resetForm();
+
+      showMessage(
+        result.message ||
+          "All users deleted successfully!"
+      );
+
+      await fetchUsers();
+    } catch (error: any) {
+      setShowDeleteAllModal(
+        false
+      );
+
+      showError(
+        error.message ||
+          "Something went wrong"
+      );
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
+  // =========================
   // JSX
-  // ===================================================
+  // =========================
 
   return (
     <main className="min-h-screen bg-slate-100 px-3 py-6 sm:px-6 sm:py-10">
 
       <div className="mx-auto w-full max-w-6xl">
 
-        {/* =================================================
-            HEADER
-        ================================================= */}
+        {/* HEADER */}
 
         <div className="mb-7 sm:mb-8">
 
@@ -905,9 +741,7 @@ export default function Home() {
 
         </div>
 
-        {/* =================================================
-            SUCCESS MESSAGE
-        ================================================= */}
+        {/* SUCCESS MESSAGE */}
 
         {message && (
           <div className="mb-5 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-4 text-sm font-medium text-green-700">
@@ -933,9 +767,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* =================================================
-            ERROR MESSAGE
-        ================================================= */}
+        {/* ERROR MESSAGE */}
 
         {error && (
           <div className="mb-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm font-medium text-red-700">
@@ -961,9 +793,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* =================================================
-            FORM
-        ================================================= */}
+        {/* ADD / UPDATE */}
 
         <section className="mb-7 rounded-2xl bg-white p-4 shadow-sm sm:mb-8 sm:p-6">
 
@@ -983,17 +813,11 @@ export default function Home() {
 
           </div>
 
-          <form
-            onSubmit={
-              handleSubmit
-            }
-          >
+          <form onSubmit={handleSubmit}>
 
             <div className="grid gap-4 sm:gap-5 md:grid-cols-2">
 
-              {/* =================================================
-                  USER NAME
-              ================================================= */}
+              {/* USER NAME */}
 
               <div>
 
@@ -1010,17 +834,13 @@ export default function Home() {
                     )
                   }
                   placeholder="Enter user name"
-                  disabled={
-                    isDeleteMode
-                  }
+                  disabled={isDeleteMode}
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100"
                 />
 
               </div>
 
-              {/* =================================================
-                  EMAIL
-              ================================================= */}
+              {/* EMAIL */}
 
               <div>
 
@@ -1037,17 +857,13 @@ export default function Home() {
                     )
                   }
                   placeholder="Enter email"
-                  disabled={
-                    isDeleteMode
-                  }
+                  disabled={isDeleteMode}
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100"
                 />
 
               </div>
 
-              {/* =================================================
-                  PASSWORD
-              ================================================= */}
+              {/* PASSWORD */}
 
               <div>
 
@@ -1076,17 +892,13 @@ export default function Home() {
                       ? "Leave empty to keep current password"
                       : "Enter password"
                   }
-                  disabled={
-                    isDeleteMode
-                  }
+                  disabled={isDeleteMode}
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100"
                 />
 
               </div>
 
-              {/* =================================================
-                  ROLE
-              ================================================= */}
+              {/* ROLE */}
 
               <div>
 
@@ -1103,9 +915,7 @@ export default function Home() {
                         | "trainer"
                     )
                   }
-                  disabled={
-                    isDeleteMode
-                  }
+                  disabled={isDeleteMode}
                   className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100"
                 >
 
@@ -1121,9 +931,7 @@ export default function Home() {
 
               </div>
 
-              {/* =================================================
-                  PROFILE IMAGE
-              ================================================= */}
+              {/* PROFILE IMAGE */}
 
               <div className="md:col-span-2">
 
@@ -1131,113 +939,56 @@ export default function Home() {
                   Profile Image
                 </label>
 
-                {/* =================================================
-                    EDIT MODE - CURRENT IMAGE
-                ================================================= */}
-
-                {editingId &&
-                  currentImage && (
-                    <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-
-                        <img
-                          src={
-                            currentImage
-                          }
-                          alt="Current profile"
-                          className="h-20 w-20 rounded-xl border border-slate-200 object-cover"
-                        />
-
-                        <div>
-
-                          <p className="text-sm font-semibold text-slate-800">
-                            Current Image
-                          </p>
-
-                          <p className="mt-1 text-xs text-slate-500">
-                            This image is already saved in MongoDB.
-                          </p>
-
-                          <a
-                            href={
-                              currentImage
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-2 inline-block text-xs font-semibold text-blue-600 hover:underline"
-                          >
-                            Open Current Image
-                          </a>
-
-                        </div>
-
-                      </div>
-
-                    </div>
-                  )}
-
-                {/* =================================================
-                    FILE INPUT
-                ================================================= */}
-
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
 
+                  {/* FILE INPUT */}
+
                   <input
-                    ref={
-                      fileInputRef
-                    }
+                    ref={fileInputRef}
                     id="profile-image"
                     type="file"
-                    accept="image/png,image/jpeg,image/jpg"
+                    accept="image/png,image/jpeg"
                     onChange={
                       handleImageChange
                     }
-                    disabled={
-                      isDeleteMode
-                    }
+                    disabled={isDeleteMode}
                     className="hidden"
                   />
 
-                  {/* =================================================
-                      CHOOSE FILE
-                  ================================================= */}
+                  {/* CHOOSE FILE */}
 
                   <label
                     htmlFor="profile-image"
-                    className={`inline-flex items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 ${
+                    className={`inline-flex cursor-pointer items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 ${
                       isDeleteMode
                         ? "pointer-events-none cursor-not-allowed opacity-50"
-                        : "cursor-pointer"
+                        : ""
                     }`}
                   >
-                    {selectedImageName ||
-                      "Choose File"}
+                    {selectedImageName
+                      ? selectedImageName
+                      : "Choose File"}
                   </label>
 
-                  {/* =================================================
-                      NEW IMAGE SELECTED
-                  ================================================= */}
+                  {/* IMAGE SELECTED */}
 
                   {selectedImage && (
-                    <span className="text-sm font-medium text-green-600">
-                      ✓ New image selected
+                    <span className="break-all text-sm text-slate-500">
+                      Image selected
                     </span>
                   )}
 
                 </div>
 
                 <p className="mt-2 text-xs text-slate-400">
-                  PNG / JPEG only. Maximum size: 5 MB.
+                  Only PNG and JPEG files are allowed. Maximum size: 5 MB.
                 </p>
 
               </div>
 
             </div>
 
-            {/* =================================================
-                FORM BUTTONS
-            ================================================= */}
+            {/* FORM BUTTONS */}
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
 
@@ -1250,23 +1001,17 @@ export default function Home() {
                 }
                 className="w-full rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
-
                 {editingId
                   ? updatingId
                     ? "Updating..."
                     : "Update User"
                   : loading ||
-                    uploadingImage
-                  ? uploadingImage
-                    ? "Uploading..."
-                    : "Saving..."
-                  : "+ Add User"}
-
+                      uploadingImage
+                    ? uploadingImage
+                      ? "Uploading..."
+                      : "Saving..."
+                    : "+ Add User"}
               </button>
-
-              {/* =================================================
-                  CANCEL
-              ================================================= */}
 
               {editingId && (
                 <button
@@ -1280,7 +1025,6 @@ export default function Home() {
                     }
 
                     resetForm();
-
                     setMessage("");
                     setError("");
                   }}
@@ -1300,9 +1044,7 @@ export default function Home() {
 
         </section>
 
-        {/* =================================================
-            EXISTING USERS
-        ================================================= */}
+        {/* EXISTING USERS */}
 
         <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
 
@@ -1322,15 +1064,10 @@ export default function Home() {
 
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
 
-              {/* =================================================
-                  REFRESH
-              ================================================= */}
+              {/* REFRESH */}
 
               <button
-                type="button"
-                onClick={
-                  fetchUsers
-                }
+                onClick={fetchUsers}
                 disabled={
                   loading ||
                   isDeleteMode ||
@@ -1342,18 +1079,14 @@ export default function Home() {
                 Refresh
               </button>
 
-              {/* =================================================
-                  DELETE ALL
-              ================================================= */}
+              {/* DELETE ALL */}
 
               <button
-                type="button"
                 onClick={
                   handleDeleteAllClick
                 }
                 disabled={
-                  users.length ===
-                    0 ||
+                  users.length === 0 ||
                   loading ||
                   deletingAll ||
                   isEditMode ||
@@ -1371,9 +1104,7 @@ export default function Home() {
 
           </div>
 
-          {/* =================================================
-              USER COUNT
-          ================================================= */}
+          {/* USER COUNT */}
 
           {users.length > 0 && (
             <div className="mb-5 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
@@ -1387,9 +1118,7 @@ export default function Home() {
             </div>
           )}
 
-          {/* =================================================
-              LOADING
-          ================================================= */}
+          {/* LOADING */}
 
           {loading &&
             users.length === 0 && (
@@ -1398,9 +1127,7 @@ export default function Home() {
               </div>
             )}
 
-          {/* =================================================
-              EMPTY
-          ================================================= */}
+          {/* EMPTY */}
 
           {!loading &&
             users.length === 0 && (
@@ -1417,9 +1144,7 @@ export default function Home() {
               </div>
             )}
 
-          {/* =================================================
-              TABLE
-          ================================================= */}
+          {/* TABLE */}
 
           {users.length > 0 && (
             <div className="overflow-x-auto rounded-xl border border-slate-200">
@@ -1460,183 +1185,162 @@ export default function Home() {
 
                 <tbody>
 
-                  {users.map(
-                    (user) => {
-                      const imageUrl =
-                        getImageUrl(
-                          user.profileImage
-                        );
+                  {users.map((user) => {
 
-                      const rowIsBeingDeleted =
-                        deletingId ===
-                        user._id;
-
-                      return (
-                        <tr
-                          key={
-                            user._id
-                          }
-                          className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
-                        >
-
-                          {/* =================================================
-                              USER
-                          ================================================= */}
-
-                          <td className="px-4 py-5">
-
-                            <div className="font-semibold text-slate-900">
-                              {
-                                user.userName
-                              }
-                            </div>
-
-                            <div className="mt-1 text-xs text-slate-400">
-                              ID:{" "}
-                              {user._id.slice(
-                                0,
-                                8
-                              )}
-                            </div>
-
-                          </td>
-
-                          {/* =================================================
-                              EMAIL
-                          ================================================= */}
-
-                          <td className="px-4 py-5 text-sm text-slate-600">
-                            {
-                              user.email
-                            }
-                          </td>
-
-                          {/* =================================================
-                              ROLE
-                          ================================================= */}
-
-                          <td className="px-4 py-5">
-
-                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold capitalize text-slate-700">
-                              {
-                                user.role
-                              }
-                            </span>
-
-                          </td>
-
-                          {/* =================================================
-                              IMAGE
-                          ================================================= */}
-
-                          <td className="px-4 py-5">
-
-                            {imageUrl ? (
-                              <div className="flex items-center gap-3">
-
-                                <img
-                                  src={
-                                    imageUrl
-                                  }
-                                  alt={`${user.userName} profile`}
-                                  className="h-12 w-12 rounded-xl border border-slate-200 object-cover"
-                                />
-
-                                <a
-                                  href={
-                                    imageUrl
-                                  }
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
-                                >
-                                  Open Image
-                                </a>
-
-                              </div>
-                            ) : (
-                              <span className="text-sm text-slate-400">
-                                No image
-                              </span>
-                            )}
-
-                          </td>
-
-                          {/* =================================================
-                              TIME
-                          ================================================= */}
-
-                          <td className="px-4 py-5">
-
-                            <span className="text-sm font-medium text-slate-600">
-                              {getTimeAgo(
-                                user.createdAt
-                              )}
-                            </span>
-
-                          </td>
-
-                          {/* =================================================
-                              ACTIONS
-                          ================================================= */}
-
-                          <td className="px-4 py-5">
-
-                            <div className="flex flex-wrap gap-2">
-
-                              {/* EDIT */}
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleEdit(
-                                    user
-                                  )
-                                }
-                                disabled={
-                                  isEditMode ||
-                                  isDeleteMode ||
-                                  loading ||
-                                  uploadingImage
-                                }
-                                className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
-                              >
-                                {editingId ===
-                                user._id
-                                  ? "Editing..."
-                                  : "Edit"}
-                              </button>
-
-                              {/* DELETE */}
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleDeleteClick(
-                                    user
-                                  )
-                                }
-                                disabled={
-                                  isEditMode ||
-                                  isDeleteMode ||
-                                  loading ||
-                                  uploadingImage
-                                }
-                                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
-                              >
-                                {rowIsBeingDeleted
-                                  ? "Deleting..."
-                                  : "Delete"}
-                              </button>
-
-                            </div>
-
-                          </td>
-
-                        </tr>
+                    const imageUrl =
+                      getImageUrl(
+                        user.profileImage
                       );
-                    }
-                  )}
+
+                    const rowIsBeingDeleted =
+                      deletingId ===
+                      user._id;
+
+                    return (
+                      <tr
+                        key={user._id}
+                        className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
+                      >
+
+                        {/* USER */}
+
+                        <td className="px-4 py-5">
+
+                          <div className="font-semibold text-slate-900">
+                            {user.userName}
+                          </div>
+
+                          <div className="mt-1 text-xs text-slate-400">
+                            ID:{" "}
+                            {user._id.slice(
+                              0,
+                              8
+                            )}
+                          </div>
+
+                        </td>
+
+                        {/* EMAIL */}
+
+                        <td className="px-4 py-5 text-sm text-slate-600">
+                          {user.email}
+                        </td>
+
+                        {/* ROLE */}
+
+                        <td className="px-4 py-5">
+
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold capitalize text-slate-700">
+                            {user.role}
+                          </span>
+
+                        </td>
+
+                        {/* PROFILE IMAGE */}
+
+                        <td className="px-4 py-5">
+
+                          {imageUrl ? (
+                            <div className="flex items-center gap-3">
+
+                              <img
+                                src={imageUrl}
+                                alt={`${user.userName} profile`}
+                                className="h-12 w-12 rounded-xl border border-slate-200 object-cover"
+                              />
+
+                              {/* OPEN IMAGE */}
+
+                              <a
+                                href={imageUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all duration-200 hover:bg-indigo-700 hover:shadow-md active:scale-95"
+                              >
+                                <span>
+                                  ↗
+                                </span>
+
+                                Open Image
+                              </a>
+
+                            </div>
+                          ) : (
+                            <span className="text-sm text-slate-400">
+                              No image
+                            </span>
+                          )}
+
+                        </td>
+
+                        {/* TIME */}
+
+                        <td className="px-4 py-5">
+
+                          <span className="text-sm font-medium text-slate-600">
+                            {getTimeAgo(
+                              user.createdAt
+                            )}
+                          </span>
+
+                        </td>
+
+                        {/* ACTIONS */}
+
+                        <td className="px-4 py-5">
+
+                          <div className="flex flex-wrap gap-2">
+
+                            {/* EDIT */}
+
+                            <button
+                              onClick={() =>
+                                handleEdit(
+                                  user
+                                )
+                              }
+                              disabled={
+                                isEditMode ||
+                                isDeleteMode ||
+                                loading ||
+                                uploadingImage
+                              }
+                              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              {editingId ===
+                              user._id
+                                ? "Editing..."
+                                : "Edit"}
+                            </button>
+
+                            {/* DELETE */}
+
+                            <button
+                              onClick={() =>
+                                handleDeleteClick(
+                                  user
+                                )
+                              }
+                              disabled={
+                                isEditMode ||
+                                isDeleteMode ||
+                                loading ||
+                                uploadingImage
+                              }
+                              className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              {rowIsBeingDeleted
+                                ? "Deleting..."
+                                : "Delete"}
+                            </button>
+
+                          </div>
+
+                        </td>
+
+                      </tr>
+                    );
+                  })}
 
                 </tbody>
 
@@ -1649,9 +1353,9 @@ export default function Home() {
 
       </div>
 
-      {/* =====================================================
+      {/* =========================
           DELETE USER MODAL
-      ===================================================== */}
+      ========================= */}
 
       {deleteUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 backdrop-blur-sm">
@@ -1667,27 +1371,23 @@ export default function Home() {
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              Are you sure you want to delete this user? This action cannot be undone.
+              Are you sure you want to delete
+              this user? This action cannot be
+              undone.
             </p>
 
             <div className="mt-5 rounded-xl bg-slate-50 p-4">
 
               <p className="font-semibold text-slate-900">
-                {
-                  deleteUser.userName
-                }
+                {deleteUser.userName}
               </p>
 
               <p className="mt-1 break-all text-sm text-slate-500">
-                {
-                  deleteUser.email
-                }
+                {deleteUser.email}
               </p>
 
               <p className="mt-1 text-xs capitalize text-slate-400">
-                {
-                  deleteUser.role
-                }
+                {deleteUser.role}
               </p>
 
             </div>
@@ -1697,13 +1397,10 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() =>
-                  setDeleteUser(
-                    null
-                  )
+                  setDeleteUser(null)
                 }
                 disabled={
-                  deletingId !==
-                  null
+                  deletingId !== null
                 }
                 className="w-full rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
@@ -1716,13 +1413,11 @@ export default function Home() {
                   confirmDelete
                 }
                 disabled={
-                  deletingId !==
-                  null
+                  deletingId !== null
                 }
                 className="w-full rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
-                {deletingId !==
-                null
+                {deletingId !== null
                   ? "Deleting..."
                   : "Yes, Delete User"}
               </button>
@@ -1734,9 +1429,9 @@ export default function Home() {
         </div>
       )}
 
-      {/* =====================================================
+      {/* =========================
           DELETE ALL MODAL
-      ===================================================== */}
+      ========================= */}
 
       {showDeleteAllModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 backdrop-blur-sm">
@@ -1754,9 +1449,7 @@ export default function Home() {
             <p className="mt-2 text-sm leading-6 text-slate-500">
               This will permanently delete all{" "}
               <span className="font-bold text-red-600">
-                {
-                  users.length
-                }
+                {users.length}
               </span>{" "}
               users from the database.
             </p>
@@ -1768,7 +1461,8 @@ export default function Home() {
               </p>
 
               <p className="mt-1 text-xs text-red-600">
-                All user records will be permanently removed.
+                All user records will be permanently
+                removed.
               </p>
 
             </div>
