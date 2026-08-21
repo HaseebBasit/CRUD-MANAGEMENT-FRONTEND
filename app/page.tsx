@@ -6,6 +6,7 @@ interface User {
   _id: string;
   userName: string;
   email: string;
+  password?: string;
   role: "student" | "trainer";
   profileImage?: string;
   createdAt?: string;
@@ -14,50 +15,122 @@ interface User {
 
 const API_URL = "https://crud-management-backend.onrender.com";
 
+// =========================
+// HELPERS
+// =========================
+
+const getImageUrl = (imagePath?: string) => {
+  if (!imagePath) return "";
+
+  // Already a complete URL
+  if (
+    imagePath.startsWith("http://") ||
+    imagePath.startsWith("https://")
+  ) {
+    return imagePath;
+  }
+
+  // Backend stores /uploads/filename
+  return `${API_URL}${imagePath.startsWith("/") ? "" : "/"}${imagePath}`;
+};
+
+const getTimeAgo = (date?: string) => {
+  if (!date) return "Unknown time";
+
+  const created = new Date(date).getTime();
+  const now = Date.now();
+
+  const difference = Math.max(0, now - created);
+
+  const seconds = Math.floor(difference / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  const weeks = Math.floor(days / 7);
+  const months = Math.floor(days / 30);
+  const years = Math.floor(days / 365);
+
+  if (seconds < 60) {
+    return "Just now";
+  }
+
+  if (minutes < 60) {
+    return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  }
+
+  if (hours < 24) {
+    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  }
+
+  if (days < 7) {
+    return `${days} day${days === 1 ? "" : "s"} ago`;
+  }
+
+  if (weeks < 5) {
+    return `${weeks} week${weeks === 1 ? "" : "s"} ago`;
+  }
+
+  if (months < 12) {
+    return `${months} month${months === 1 ? "" : "s"} ago`;
+  }
+
+  return `${years} year${years === 1 ? "" : "s"} ago`;
+};
+
 export default function Home() {
   const [users, setUsers] = useState<User[]>([]);
+
+  // =========================
+  // FORM STATES
+  // =========================
 
   const [userName, setUserName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const [role, setRole] =
     useState<"student" | "trainer">("student");
-
-  const [profileImage, setProfileImage] = useState("");
-  const [selectedFile, setSelectedFile] =
-    useState<File | null>(null);
-
-  const fileInputRef =
-    useRef<HTMLInputElement | null>(null);
 
   const [editingId, setEditingId] =
     useState<string | null>(null);
 
+  const [selectedImage, setSelectedImage] =
+    useState<File | null>(null);
+
+  const [selectedImageName, setSelectedImageName] =
+    useState("");
+
+  const fileInputRef =
+    useRef<HTMLInputElement | null>(null);
+
   // =========================
-  // OPERATION STATES
+  // LOADING STATES
   // =========================
 
-  const [saving, setSaving] = useState(false);
-  const [updating, setUpdating] = useState(false);
+  const [loading, setLoading] = useState(false);
+
   const [deletingId, setDeletingId] =
     useState<string | null>(null);
+
+  const [updatingId, setUpdatingId] =
+    useState<string | null>(null);
+
   const [deletingAll, setDeletingAll] =
     useState(false);
 
-  const [loadingUsers, setLoadingUsers] =
+  const [uploadingImage, setUploadingImage] =
     useState(false);
 
-  // This is the MAIN LOCK.
-  // If any operation is running,
-  // all other action buttons become disabled.
-  const isBusy =
-    saving ||
-    updating ||
-    deletingAll ||
-    deletingId !== null;
+  // =========================
+  // MESSAGES
+  // =========================
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  // =========================
+  // DELETE MODALS
+  // =========================
 
   const [deleteUser, setDeleteUser] =
     useState<User | null>(null);
@@ -66,94 +139,34 @@ export default function Home() {
     useState(false);
 
   // =========================
-  // BACKEND IMAGE URL
+  // DISABLE LOGIC
   // =========================
 
-  const getImageUrl = (imagePath?: string) => {
-    if (!imagePath) return "";
+  /*
+    EDIT MODE:
+    - Delete disabled
+    - Delete All disabled
+    - Other Edit buttons disabled
 
-    if (imagePath.startsWith("http")) {
-      return imagePath;
-    }
+    DELETE MODE:
+    - Edit disabled
+    - Save / Update disabled
+    - Delete All disabled
+    - Other Delete buttons disabled
 
-    return `${API_URL}${imagePath}`;
-  };
+    SAVING / UPLOADING:
+    - Everything important disabled
+  */
 
-  // =========================
-  // TIME AGO
-  // =========================
+  const isEditMode = editingId !== null;
 
-  const getTimeAgo = (date?: string) => {
-    if (!date) return "Unknown time";
+  const isDeleteMode =
+    deletingId !== null || deletingAll;
 
-    const createdTime = new Date(date).getTime();
-    const currentTime = Date.now();
-
-    const difference =
-      currentTime - createdTime;
-
-    if (difference < 0) {
-      return "Just now";
-    }
-
-    const seconds = Math.floor(
-      difference / 1000
-    );
-
-    if (seconds < 60) {
-      return seconds <= 1
-        ? "Just now"
-        : `${seconds} seconds ago`;
-    }
-
-    const minutes = Math.floor(
-      seconds / 60
-    );
-
-    if (minutes < 60) {
-      return minutes === 1
-        ? "1 minute ago"
-        : `${minutes} minutes ago`;
-    }
-
-    const hours = Math.floor(
-      minutes / 60
-    );
-
-    if (hours < 24) {
-      return hours === 1
-        ? "1 hour ago"
-        : `${hours} hours ago`;
-    }
-
-    const days = Math.floor(
-      hours / 24
-    );
-
-    if (days < 30) {
-      return days === 1
-        ? "1 day ago"
-        : `${days} days ago`;
-    }
-
-    const months = Math.floor(
-      days / 30
-    );
-
-    if (months < 12) {
-      return months === 1
-        ? "1 month ago"
-        : `${months} months ago`;
-    }
-
-    const years = Math.floor(
-      months / 12
-    );
-
-    return years === 1
-      ? "1 year ago"
-      : `${years} years ago`;
-  };
+  const isBusy =
+    loading ||
+    uploadingImage ||
+    isDeleteMode;
 
   // =========================
   // SUCCESS MESSAGE
@@ -161,6 +174,7 @@ export default function Home() {
 
   const showMessage = (text: string) => {
     setMessage(text);
+    setError("");
 
     setTimeout(() => {
       setMessage("");
@@ -173,6 +187,7 @@ export default function Home() {
 
   const showError = (text: string) => {
     setError(text);
+    setMessage("");
 
     setTimeout(() => {
       setError("");
@@ -185,7 +200,7 @@ export default function Home() {
 
   const fetchUsers = async () => {
     try {
-      setLoadingUsers(true);
+      setLoading(true);
       setError("");
 
       const response = await fetch(
@@ -196,19 +211,17 @@ export default function Home() {
 
       if (!response.ok) {
         throw new Error(
-          result.message ||
-            "Failed to fetch users"
+          result.message || "Failed to fetch users"
         );
       }
 
       setUsers(result.data || []);
     } catch (error: any) {
       showError(
-        error.message ||
-          "Something went wrong"
+        error.message || "Something went wrong"
       );
     } finally {
-      setLoadingUsers(false);
+      setLoading(false);
     }
   };
 
@@ -225,9 +238,11 @@ export default function Home() {
     setEmail("");
     setPassword("");
     setRole("student");
-    setProfileImage("");
-    setSelectedFile(null);
+
     setEditingId(null);
+
+    setSelectedImage(null);
+    setSelectedImageName("");
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -235,17 +250,19 @@ export default function Home() {
   };
 
   // =========================
-  // SELECT IMAGE
+  // IMAGE SELECT
   // =========================
 
-  const handleImageSelect = async (
+  const handleImageChange = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = e.target.files?.[0];
 
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
-    // Only PNG/JPEG
+    // Only PNG / JPEG
     const allowedTypes = [
       "image/png",
       "image/jpeg",
@@ -257,20 +274,30 @@ export default function Home() {
       );
 
       e.target.value = "";
+      setSelectedImage(null);
+      setSelectedImageName("");
+
       return;
     }
 
-    // 5MB maximum
+    // 5 MB
     if (file.size > 5 * 1024 * 1024) {
       showError(
         "File too large! Maximum size is 5 MB."
       );
 
       e.target.value = "";
+      setSelectedImage(null);
+      setSelectedImageName("");
+
       return;
     }
 
-    setSelectedFile(file);
+    setSelectedImage(file);
+    setSelectedImageName(file.name);
+
+    setMessage("");
+    setError("");
   };
 
   // =========================
@@ -278,46 +305,50 @@ export default function Home() {
   // =========================
 
   const uploadImage = async () => {
-    if (!selectedFile) {
-      return profileImage;
+    if (!selectedImage) {
+      return "";
     }
 
-    const formData = new FormData();
+    try {
+      setUploadingImage(true);
 
-    formData.append(
-      "image",
-      selectedFile
-    );
+      const formData = new FormData();
 
-    const response = await fetch(
-      `${API_URL}/api/profile/upload`,
-      {
-        method: "POST",
-        body: formData,
+      formData.append("image", selectedImage);
+
+      const response = await fetch(
+        `${API_URL}/api/profile/upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.message ||
+            "Failed to upload image"
+        );
       }
-    );
 
-    const result = await response.json();
+      /*
+        Backend returns:
+        /uploads/filename
 
-    if (!response.ok) {
+        We save this path in MongoDB.
+      */
+
+      return result.data.url;
+    } catch (error: any) {
       throw new Error(
-        result.message ||
+        error.message ||
           "Image upload failed"
       );
+    } finally {
+      setUploadingImage(false);
     }
-
-    /*
-      Backend returns:
-
-      url: /uploads/filename.jpeg
-
-      Convert it to full backend URL.
-    */
-
-    const fullImageUrl =
-      getImageUrl(result.data.url);
-
-    return fullImageUrl;
   };
 
   // =========================
@@ -325,21 +356,18 @@ export default function Home() {
   // =========================
 
   const handleEdit = (user: User) => {
-    // IMPORTANT:
-    // Do not allow editing while ANY
-    // operation is running.
-    if (isBusy) return;
+    // Do nothing while delete operation is running
+    if (isDeleteMode) {
+      return;
+    }
 
     setUserName(user.userName);
     setEmail(user.email);
     setRole(user.role);
     setPassword("");
 
-    setProfileImage(
-      user.profileImage || ""
-    );
-
-    setSelectedFile(null);
+    setSelectedImage(null);
+    setSelectedImageName("");
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -365,8 +393,10 @@ export default function Home() {
   ) => {
     e.preventDefault();
 
-    // Prevent duplicate submit
-    if (isBusy) return;
+    // Don't allow submit during delete
+    if (isDeleteMode) {
+      return;
+    }
 
     setMessage("");
     setError("");
@@ -392,18 +422,20 @@ export default function Home() {
     }
 
     try {
-      // ==================================================
-      // UPDATE USER
-      // ==================================================
+      setLoading(true);
+
+      // =========================
+      // UPDATE
+      // =========================
 
       if (editingId) {
-        setUpdating(true);
+        setUpdatingId(editingId);
 
-        let imageUrl = profileImage;
+        let profileImage: string | undefined;
 
-        // Upload new image only if selected
-        if (selectedFile) {
-          imageUrl =
+        // Upload new image if selected
+        if (selectedImage) {
+          profileImage =
             await uploadImage();
         }
 
@@ -414,16 +446,9 @@ export default function Home() {
           password?: string;
           profileImage?: string;
         } = {
-          userName:
-            userName.trim(),
-
-          email:
-            email.trim(),
-
+          userName: userName.trim(),
+          email: email.trim(),
           role,
-
-          profileImage:
-            imageUrl,
         };
 
         if (password.trim()) {
@@ -431,16 +456,19 @@ export default function Home() {
             password.trim();
         }
 
+        if (profileImage) {
+          updateData.profileImage =
+            profileImage;
+        }
+
         const response = await fetch(
           `${API_URL}/user/update/${editingId}`,
           {
             method: "PUT",
-
             headers: {
               "Content-Type":
                 "application/json",
             },
-
             body: JSON.stringify(
               updateData
             ),
@@ -469,17 +497,15 @@ export default function Home() {
         return;
       }
 
-      // ==================================================
+      // =========================
       // CREATE USER
-      // ==================================================
+      // =========================
 
-      setSaving(true);
+      let profileImage = "";
 
-      let imageUrl = "";
-
-      // Upload image if selected
-      if (selectedFile) {
-        imageUrl =
+      // Upload image first
+      if (selectedImage) {
+        profileImage =
           await uploadImage();
       }
 
@@ -487,25 +513,18 @@ export default function Home() {
         `${API_URL}/user/save`,
         {
           method: "POST",
-
           headers: {
             "Content-Type":
               "application/json",
           },
-
           body: JSON.stringify({
             userName:
               userName.trim(),
-
             email:
               email.trim(),
-
             password,
-
             role,
-
-            profileImage:
-              imageUrl,
+            profileImage,
           }),
         }
       );
@@ -528,28 +547,37 @@ export default function Home() {
       resetForm();
 
       await fetchUsers();
-
     } catch (error: any) {
       showError(
         error.message ||
           "Something went wrong"
       );
     } finally {
-      setSaving(false);
-      setUpdating(false);
+      setLoading(false);
+      setUpdatingId(null);
     }
   };
 
   // =========================
-  // DELETE USER MODAL
+  // OPEN DELETE MODAL
   // =========================
 
   const handleDeleteClick = (
     user: User
   ) => {
-    if (isBusy) return;
+    // Delete is disabled in edit mode
+    if (isEditMode) {
+      return;
+    }
+
+    // Don't allow another delete
+    // while delete operation is running
+    if (isDeleteMode) {
+      return;
+    }
 
     setDeleteUser(user);
+
     setMessage("");
     setError("");
   };
@@ -559,10 +587,9 @@ export default function Home() {
   // =========================
 
   const confirmDelete = async () => {
-    if (!deleteUser) return;
-
-    // Extra safety
-    if (isBusy) return;
+    if (!deleteUser) {
+      return;
+    }
 
     try {
       setDeletingId(
@@ -591,22 +618,12 @@ export default function Home() {
 
       setDeleteUser(null);
 
-      // If deleting the currently
-      // edited user, reset form.
-      if (
-        editingId ===
-        deleteUser._id
-      ) {
-        resetForm();
-      }
-
       showMessage(
         result.message ||
           "User deleted successfully!"
       );
 
       await fetchUsers();
-
     } catch (error: any) {
       setDeleteUser(null);
 
@@ -620,11 +637,19 @@ export default function Home() {
   };
 
   // =========================
-  // DELETE ALL MODAL
+  // DELETE ALL CLICK
   // =========================
 
   const handleDeleteAllClick = () => {
-    if (isBusy) return;
+    // Disabled while editing
+    if (isEditMode) {
+      return;
+    }
+
+    // Disabled during another operation
+    if (isDeleteMode || loading) {
+      return;
+    }
 
     if (users.length === 0) {
       showError(
@@ -634,6 +659,7 @@ export default function Home() {
     }
 
     setShowDeleteAllModal(true);
+
     setMessage("");
     setError("");
   };
@@ -643,8 +669,6 @@ export default function Home() {
   // =========================
 
   const confirmDeleteAll = async () => {
-    if (isBusy) return;
-
     try {
       setDeletingAll(true);
 
@@ -678,7 +702,6 @@ export default function Home() {
       );
 
       await fetchUsers();
-
     } catch (error: any) {
       setShowDeleteAllModal(false);
 
@@ -690,13 +713,6 @@ export default function Home() {
       setDeletingAll(false);
     }
   };
-
-  // =========================
-  // CURRENT IMAGE URL
-  // =========================
-
-  const currentImageUrl =
-    getImageUrl(profileImage);
 
   return (
     <main className="min-h-screen bg-slate-100 px-3 py-6 sm:px-6 sm:py-10">
@@ -720,7 +736,7 @@ export default function Home() {
         </div>
 
         {/* =========================
-            SUCCESS
+            SUCCESS MESSAGE
         ========================= */}
 
         {message && (
@@ -748,7 +764,7 @@ export default function Home() {
         )}
 
         {/* =========================
-            ERROR
+            ERROR MESSAGE
         ========================= */}
 
         {error && (
@@ -776,7 +792,7 @@ export default function Home() {
         )}
 
         {/* =========================
-            FORM
+            ADD / UPDATE USER
         ========================= */}
 
         <section className="mb-7 rounded-2xl bg-white p-4 shadow-sm sm:mb-8 sm:p-6">
@@ -817,8 +833,8 @@ export default function Home() {
                       e.target.value
                     )
                   }
-                  disabled={isBusy}
                   placeholder="Enter user name"
+                  disabled={isDeleteMode}
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100"
                 />
 
@@ -840,8 +856,8 @@ export default function Home() {
                       e.target.value
                     )
                   }
-                  disabled={isBusy}
                   placeholder="Enter email"
+                  disabled={isDeleteMode}
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100"
                 />
 
@@ -871,12 +887,12 @@ export default function Home() {
                       e.target.value
                     )
                   }
-                  disabled={isBusy}
                   placeholder={
                     editingId
                       ? "Leave empty to keep current password"
                       : "Enter password"
                   }
+                  disabled={isDeleteMode}
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100"
                 />
 
@@ -892,7 +908,6 @@ export default function Home() {
 
                 <select
                   value={role}
-                  disabled={isBusy}
                   onChange={(e) =>
                     setRole(
                       e.target.value as
@@ -900,6 +915,7 @@ export default function Home() {
                         | "trainer"
                     )
                   }
+                  disabled={isDeleteMode}
                   className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100"
                 >
 
@@ -923,102 +939,100 @@ export default function Home() {
                   Profile Image
                 </label>
 
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg"
-                  disabled={isBusy}
-                  onChange={
-                    handleImageSelect
-                  }
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm disabled:cursor-not-allowed disabled:bg-slate-100"
-                />
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+
+                  {/* HIDDEN FILE INPUT */}
+
+                  <input
+                    ref={fileInputRef}
+                    id="profile-image"
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    onChange={
+                      handleImageChange
+                    }
+                    disabled={isDeleteMode}
+                    className="hidden"
+                  />
+
+                  {/* CHOOSE FILE BUTTON */}
+
+                  <label
+                    htmlFor="profile-image"
+                    className={`inline-flex cursor-pointer items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 ${
+                      isDeleteMode
+                        ? "pointer-events-none cursor-not-allowed opacity-50"
+                        : ""
+                    }`}
+                  >
+                    {selectedImageName
+                      ? selectedImageName
+                      : "Choose File"}
+                  </label>
+
+                  {/* SELECTED FILE */}
+
+                  {selectedImage && (
+                    <span className="break-all text-sm text-slate-500">
+                      Image selected
+                    </span>
+                  )}
+
+                </div>
 
                 <p className="mt-2 text-xs text-slate-400">
-                  Only PNG and JPEG images are allowed. Maximum 5 MB.
+                  Only PNG and JPEG files are allowed. Maximum size: 5 MB.
                 </p>
-
-                {/* CURRENT IMAGE */}
-
-                {currentImageUrl && (
-                  <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-slate-50 p-3">
-
-                    <img
-                      src={currentImageUrl}
-                      alt="Profile"
-                      className="h-16 w-16 rounded-xl object-cover"
-                    />
-
-                    <div className="flex flex-col gap-2">
-
-                      <span className="text-xs text-slate-500">
-                        Current profile image
-                      </span>
-
-                      <a
-                        href={currentImageUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex w-fit rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700"
-                      >
-                        Open Image
-                      </a>
-
-                    </div>
-
-                  </div>
-                )}
-
-                {/* NEW SELECTED FILE */}
-
-                {selectedFile && (
-                  <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
-
-                    <p className="text-sm font-semibold text-blue-700">
-                      Selected image:
-                    </p>
-
-                    <p className="mt-1 break-all text-xs text-blue-600">
-                      {selectedFile.name}
-                    </p>
-
-                  </div>
-                )}
 
               </div>
 
             </div>
 
-            {/* FORM BUTTONS */}
+            {/* BUTTONS */}
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
 
               <button
                 type="submit"
-                disabled={isBusy}
-                className="w-full rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                disabled={
+                  isDeleteMode ||
+                  loading ||
+                  uploadingImage
+                }
+                className="w-full rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
-
                 {editingId
-                  ? updating
+                  ? updatingId
                     ? "Updating..."
                     : "Update User"
-                  : saving
-                    ? "Saving..."
+                  : loading ||
+                      uploadingImage
+                    ? uploadingImage
+                      ? "Uploading..."
+                      : "Saving..."
                     : "+ Add User"}
-
               </button>
 
               {editingId && (
                 <button
                   type="button"
-                  disabled={isBusy}
                   onClick={() => {
+                    if (
+                      isDeleteMode ||
+                      loading
+                    ) {
+                      return;
+                    }
+
                     resetForm();
                     setMessage("");
                     setError("");
                   }}
-                  className="w-full rounded-xl border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                  disabled={
+                    isDeleteMode ||
+                    loading
+                  }
+                  className="w-full rounded-xl border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
                 >
                   Cancel
                 </button>
@@ -1055,28 +1069,33 @@ export default function Home() {
               {/* REFRESH */}
 
               <button
-                type="button"
                 onClick={fetchUsers}
-                disabled={isBusy || loadingUsers}
-                className="w-full rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                disabled={
+                  loading ||
+                  isDeleteMode ||
+                  isEditMode ||
+                  uploadingImage
+                }
+                className="w-full rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
-                {loadingUsers
-                  ? "Refreshing..."
-                  : "Refresh"}
+                Refresh
               </button>
 
               {/* DELETE ALL */}
 
               <button
-                type="button"
                 onClick={
                   handleDeleteAllClick
                 }
                 disabled={
-                  isBusy ||
-                  users.length === 0
+                  users.length === 0 ||
+                  loading ||
+                  deletingAll ||
+                  isEditMode ||
+                  isDeleteMode ||
+                  uploadingImage
                 }
-                className="w-full rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                className="w-full rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
                 {deletingAll
                   ? "Deleting All..."
@@ -1103,7 +1122,7 @@ export default function Home() {
 
           {/* LOADING */}
 
-          {loadingUsers &&
+          {loading &&
             users.length === 0 && (
               <div className="py-12 text-center text-sm text-slate-500">
                 Loading users...
@@ -1112,7 +1131,7 @@ export default function Home() {
 
           {/* EMPTY */}
 
-          {!loadingUsers &&
+          {!loading &&
             users.length === 0 && (
               <div className="rounded-xl border border-dashed border-slate-300 py-12 text-center">
 
@@ -1132,7 +1151,7 @@ export default function Home() {
           {users.length > 0 && (
             <div className="overflow-x-auto rounded-xl border border-slate-200">
 
-              <table className="w-full min-w-[1000px]">
+              <table className="w-full min-w-[1050px]">
 
                 <thead>
 
@@ -1175,6 +1194,10 @@ export default function Home() {
                         user.profileImage
                       );
 
+                    const rowIsBeingDeleted =
+                      deletingId ===
+                      user._id;
+
                     return (
                       <tr
                         key={user._id}
@@ -1215,7 +1238,7 @@ export default function Home() {
 
                         </td>
 
-                        {/* IMAGE */}
+                        {/* PROFILE IMAGE */}
 
                         <td className="px-4 py-5">
 
@@ -1224,24 +1247,24 @@ export default function Home() {
 
                               <img
                                 src={imageUrl}
-                                alt={
-                                  user.userName
-                                }
-                                className="h-12 w-12 rounded-xl object-cover"
+                                alt={`${user.userName} profile`}
+                                className="h-12 w-12 rounded-xl border border-slate-200 object-cover"
                               />
 
                               <a
-                                href={imageUrl}
+                                href={
+                                  imageUrl
+                                }
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700"
+                                className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
                               >
                                 Open Image
                               </a>
 
                             </div>
                           ) : (
-                            <span className="text-xs text-slate-400">
+                            <span className="text-sm text-slate-400">
                               No image
                             </span>
                           )}
@@ -1252,19 +1275,11 @@ export default function Home() {
 
                         <td className="px-4 py-5">
 
-                          <div className="text-sm font-medium text-slate-700">
+                          <span className="text-sm font-medium text-slate-600">
                             {getTimeAgo(
                               user.createdAt
                             )}
-                          </div>
-
-                          {user.createdAt && (
-                            <div className="mt-1 text-xs text-slate-400">
-                              {new Date(
-                                user.createdAt
-                              ).toLocaleString()}
-                            </div>
-                          )}
+                          </span>
 
                         </td>
 
@@ -1277,32 +1292,42 @@ export default function Home() {
                             {/* EDIT */}
 
                             <button
-                              type="button"
                               onClick={() =>
                                 handleEdit(
                                   user
                                 )
                               }
-                              disabled={isBusy}
+                              disabled={
+                                isEditMode ||
+                                isDeleteMode ||
+                                loading ||
+                                uploadingImage
+                              }
                               className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
                             >
-                              Edit
+                              {editingId ===
+                              user._id
+                                ? "Editing..."
+                                : "Edit"}
                             </button>
 
                             {/* DELETE */}
 
                             <button
-                              type="button"
                               onClick={() =>
                                 handleDeleteClick(
                                   user
                                 )
                               }
-                              disabled={isBusy}
+                              disabled={
+                                isEditMode ||
+                                isDeleteMode ||
+                                loading ||
+                                uploadingImage
+                              }
                               className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
                             >
-                              {deletingId ===
-                              user._id
+                              {rowIsBeingDeleted
                                 ? "Deleting..."
                                 : "Delete"}
                             </button>
@@ -1326,9 +1351,9 @@ export default function Home() {
 
       </div>
 
-      {/* ==================================================
+      {/* =========================
           DELETE ONE MODAL
-      ================================================== */}
+      ========================= */}
 
       {deleteUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 backdrop-blur-sm">
@@ -1372,23 +1397,25 @@ export default function Home() {
                 onClick={() =>
                   setDeleteUser(null)
                 }
-                disabled={isBusy}
-                className="w-full rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                disabled={
+                  deletingId !== null
+                }
+                className="w-full rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
                 Cancel
               </button>
 
               <button
                 type="button"
-                onClick={confirmDelete}
+                onClick={
+                  confirmDelete
+                }
                 disabled={
-                  isBusy ||
                   deletingId !== null
                 }
-                className="w-full rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                className="w-full rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
-                {deletingId ===
-                deleteUser._id
+                {deletingId !== null
                   ? "Deleting..."
                   : "Yes, Delete User"}
               </button>
@@ -1400,9 +1427,9 @@ export default function Home() {
         </div>
       )}
 
-      {/* ==================================================
+      {/* =========================
           DELETE ALL MODAL
-      ================================================== */}
+      ========================= */}
 
       {showDeleteAllModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 backdrop-blur-sm">
@@ -1447,8 +1474,10 @@ export default function Home() {
                     false
                   )
                 }
-                disabled={isBusy}
-                className="w-full rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                disabled={
+                  deletingAll
+                }
+                className="w-full rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
                 Cancel
               </button>
@@ -1458,8 +1487,10 @@ export default function Home() {
                 onClick={
                   confirmDeleteAll
                 }
-                disabled={isBusy}
-                className="w-full rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                disabled={
+                  deletingAll
+                }
+                className="w-full rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
                 {deletingAll
                   ? "Deleting All..."
