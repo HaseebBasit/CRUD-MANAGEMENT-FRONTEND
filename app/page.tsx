@@ -7,6 +7,7 @@ interface User {
   userName: string;
   email: string;
   role: "student" | "trainer";
+  profileImage?: string;
   createdAt?: string;
 }
 
@@ -21,25 +22,33 @@ export default function Home() {
   const [role, setRole] =
     useState<"student" | "trainer">("student");
 
-  const [editingId, setEditingId] = useState<string | null>(
-    null
-  );
+  const [profileImage, setProfileImage] =
+    useState<File | null>(null);
+
+  const [imagePreview, setImagePreview] =
+    useState<string>("");
+
+  const [editingId, setEditingId] =
+    useState<string | null>(null);
+
+  const [existingImage, setExistingImage] =
+    useState<string>("");
 
   const [loading, setLoading] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(
-    null
-  );
-  const [updatingId, setUpdatingId] = useState<string | null>(
-    null
-  );
-  const [deletingAll, setDeletingAll] = useState(false);
+  const [deletingId, setDeletingId] =
+    useState<string | null>(null);
+
+  const [updatingId, setUpdatingId] =
+    useState<string | null>(null);
+
+  const [deletingAll, setDeletingAll] =
+    useState(false);
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const [deleteUser, setDeleteUser] = useState<User | null>(
-    null
-  );
+  const [deleteUser, setDeleteUser] =
+    useState<User | null>(null);
 
   const [showDeleteAllModal, setShowDeleteAllModal] =
     useState(false);
@@ -112,7 +121,88 @@ export default function Home() {
     setEmail("");
     setPassword("");
     setRole("student");
+
+    setProfileImage(null);
+    setImagePreview("");
+    setExistingImage("");
+
     setEditingId(null);
+  };
+
+  // =========================
+  // IMAGE SELECT
+  // =========================
+
+  const handleImageChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    // Frontend validation
+    const allowedTypes = [
+      "image/png",
+      "image/jpeg"
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      showError(
+        "Only PNG and JPEG/JPG images are allowed."
+      );
+
+      e.target.value = "";
+      setProfileImage(null);
+      setImagePreview("");
+
+      return;
+    }
+
+    setProfileImage(file);
+
+    const previewUrl = URL.createObjectURL(file);
+
+    setImagePreview(previewUrl);
+
+    setMessage("");
+    setError("");
+  };
+
+  // =========================
+  // UPLOAD PROFILE IMAGE
+  // =========================
+
+  const uploadProfileImage = async (
+    file: File
+  ): Promise<string> => {
+    const formData = new FormData();
+
+    formData.append("image", file);
+
+    const response = await fetch(
+      `${API_URL}/api/profile/upload`,
+      {
+        method: "POST",
+        body: formData
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        result.message ||
+          "Failed to upload profile image"
+      );
+    }
+
+    if (!result.data?.url) {
+      throw new Error(
+        "Image uploaded but URL was not returned."
+      );
+    }
+
+    return result.data.url;
   };
 
   // =========================
@@ -127,12 +217,16 @@ export default function Home() {
 
     setEditingId(user._id);
 
+    setExistingImage(user.profileImage || "");
+    setProfileImage(null);
+    setImagePreview("");
+
     setMessage("");
     setError("");
 
     window.scrollTo({
       top: 0,
-      behavior: "smooth",
+      behavior: "smooth"
     });
   };
 
@@ -149,7 +243,9 @@ export default function Home() {
     setError("");
 
     if (!userName.trim() || !email.trim()) {
-      showError("Please fill all required fields.");
+      showError(
+        "Please fill all required fields."
+      );
       return;
     }
 
@@ -163,6 +259,18 @@ export default function Home() {
     try {
       setLoading(true);
 
+      let uploadedImageUrl =
+        editingId ? existingImage : "";
+
+      // =========================
+      // UPLOAD IMAGE
+      // =========================
+
+      if (profileImage) {
+        uploadedImageUrl =
+          await uploadProfileImage(profileImage);
+      }
+
       // =========================
       // UPDATE
       // =========================
@@ -175,10 +283,12 @@ export default function Home() {
           email: string;
           role: "student" | "trainer";
           password?: string;
+          profileImage?: string;
         } = {
           userName: userName.trim(),
           email: email.trim(),
           role,
+          profileImage: uploadedImageUrl
         };
 
         if (password.trim()) {
@@ -190,9 +300,9 @@ export default function Home() {
           {
             method: "PUT",
             headers: {
-              "Content-Type": "application/json",
+              "Content-Type": "application/json"
             },
-            body: JSON.stringify(updateData),
+            body: JSON.stringify(updateData)
           }
         );
 
@@ -226,14 +336,15 @@ export default function Home() {
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type": "application/json"
           },
           body: JSON.stringify({
             userName: userName.trim(),
             email: email.trim(),
             password,
             role,
-          }),
+            profileImage: uploadedImageUrl
+          })
         }
       );
 
@@ -290,7 +401,7 @@ export default function Home() {
       const response = await fetch(
         `${API_URL}/user/delete/${deleteUser._id}`,
         {
-          method: "DELETE",
+          method: "DELETE"
         }
       );
 
@@ -329,7 +440,9 @@ export default function Home() {
 
   const handleDeleteAllClick = () => {
     if (users.length === 0) {
-      showError("There are no users to delete.");
+      showError(
+        "There are no users to delete."
+      );
       return;
     }
 
@@ -351,7 +464,7 @@ export default function Home() {
       const response = await fetch(
         `${API_URL}/users/delete-all`,
         {
-          method: "DELETE",
+          method: "DELETE"
         }
       );
 
@@ -391,9 +504,7 @@ export default function Home() {
 
       <div className="mx-auto w-full max-w-6xl">
 
-        {/* =========================
-            HEADER
-        ========================= */}
+        {/* HEADER */}
 
         <div className="mb-7 sm:mb-8">
 
@@ -407,9 +518,7 @@ export default function Home() {
 
         </div>
 
-        {/* =========================
-            SUCCESS MESSAGE
-        ========================= */}
+        {/* SUCCESS MESSAGE */}
 
         {message && (
           <div className="mb-5 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-4 text-sm font-medium text-green-700">
@@ -433,9 +542,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* =========================
-            ERROR MESSAGE
-        ========================= */}
+        {/* ERROR MESSAGE */}
 
         {error && (
           <div className="mb-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm font-medium text-red-700">
@@ -459,9 +566,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* =========================
-            ADD / UPDATE USER
-        ========================= */}
+        {/* ADD / UPDATE USER */}
 
         <section className="mb-7 rounded-2xl bg-white p-4 shadow-sm sm:mb-8 sm:p-6">
 
@@ -589,6 +694,51 @@ export default function Home() {
 
               </div>
 
+              {/* PROFILE IMAGE */}
+
+              <div className="md:col-span-2">
+
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Profile Image
+                  {editingId && (
+                    <span className="ml-2 text-xs font-normal text-slate-400">
+                      Optional
+                    </span>
+                  )}
+                </label>
+
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+
+                  <input
+                    type="file"
+                    accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                    onChange={handleImageChange}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-slate-700"
+                  />
+
+                  {(imagePreview || existingImage) && (
+                    <div className="shrink-0">
+
+                      <img
+                        src={
+                          imagePreview ||
+                          `${API_URL}${existingImage}`
+                        }
+                        alt="Profile preview"
+                        className="h-20 w-20 rounded-xl border border-slate-200 object-cover"
+                      />
+
+                    </div>
+                  )}
+
+                </div>
+
+                <p className="mt-2 text-xs text-slate-400">
+                  Only PNG and JPEG/JPG images are allowed.
+                </p>
+
+              </div>
+
             </div>
 
             {/* BUTTONS */}
@@ -629,9 +779,7 @@ export default function Home() {
 
         </section>
 
-        {/* =========================
-            EXISTING USERS
-        ========================= */}
+        {/* EXISTING USERS */}
 
         <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
 
@@ -651,8 +799,6 @@ export default function Home() {
 
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
 
-              {/* REFRESH */}
-
               <button
                 onClick={fetchUsers}
                 disabled={loading || deletingAll}
@@ -660,8 +806,6 @@ export default function Home() {
               >
                 Refresh
               </button>
-
-              {/* DELETE ALL */}
 
               <button
                 onClick={handleDeleteAllClick}
@@ -724,7 +868,7 @@ export default function Home() {
           {users.length > 0 && (
             <div className="overflow-x-auto rounded-xl border border-slate-200">
 
-              <table className="w-full min-w-[850px]">
+              <table className="w-full min-w-[950px]">
 
                 <thead>
 
@@ -740,6 +884,10 @@ export default function Home() {
 
                     <th className="px-4 py-4 text-sm font-semibold text-slate-600">
                       Role
+                    </th>
+
+                    <th className="px-4 py-4 text-sm font-semibold text-slate-600">
+                      Profile
                     </th>
 
                     <th className="px-4 py-4 text-sm font-semibold text-slate-600">
@@ -786,6 +934,24 @@ export default function Home() {
                         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold capitalize text-slate-700">
                           {user.role}
                         </span>
+
+                      </td>
+
+                      {/* PROFILE */}
+
+                      <td className="px-4 py-5">
+
+                        {user.profileImage ? (
+                          <img
+                            src={`${API_URL}${user.profileImage}`}
+                            alt={user.userName}
+                            className="h-12 w-12 rounded-full border border-slate-200 object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-400">
+                            N/A
+                          </div>
+                        )}
 
                       </td>
 
@@ -839,9 +1005,7 @@ export default function Home() {
 
       </div>
 
-      {/* =========================
-          DELETE ONE MODAL
-      ========================= */}
+      {/* DELETE ONE MODAL */}
 
       {deleteUser && (
 
@@ -917,9 +1081,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* =========================
-          DELETE ALL MODAL
-      ========================= */}
+      {/* DELETE ALL MODAL */}
 
       {showDeleteAllModal && (
 
