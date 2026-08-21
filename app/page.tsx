@@ -19,7 +19,15 @@ const API_URL =
   "https://crud-management-backend.onrender.com";
 
 export default function Home() {
+  // =========================
+  // USERS
+  // =========================
+
   const [users, setUsers] = useState<User[]>([]);
+
+  // =========================
+  // FORM
+  // =========================
 
   const [userName, setUserName] = useState("");
   const [email, setEmail] = useState("");
@@ -27,6 +35,10 @@ export default function Home() {
 
   const [role, setRole] =
     useState<"student" | "trainer">("student");
+
+  // =========================
+  // IMAGE
+  // =========================
 
   const [profileImage, setProfileImage] =
     useState<File | null>(null);
@@ -37,8 +49,19 @@ export default function Home() {
   const [existingImage, setExistingImage] =
     useState("");
 
+  const fileInputRef =
+    useRef<HTMLInputElement | null>(null);
+
+  // =========================
+  // EDIT
+  // =========================
+
   const [editingId, setEditingId] =
     useState<string | null>(null);
+
+  // =========================
+  // LOADING / OPERATIONS
+  // =========================
 
   const [loading, setLoading] =
     useState(false);
@@ -52,11 +75,19 @@ export default function Home() {
   const [deletingAll, setDeletingAll] =
     useState(false);
 
+  // =========================
+  // MESSAGES
+  // =========================
+
   const [message, setMessage] =
     useState("");
 
   const [error, setError] =
     useState("");
+
+  // =========================
+  // MODALS
+  // =========================
 
   const [deleteUser, setDeleteUser] =
     useState<User | null>(null);
@@ -67,14 +98,7 @@ export default function Home() {
   ] = useState(false);
 
   // =========================
-  // FILE INPUT REF
-  // =========================
-
-  const fileInputRef =
-    useRef<HTMLInputElement | null>(null);
-
-  // =========================
-  // OPERATION LOCK
+  // GLOBAL OPERATION LOCK
   // =========================
 
   const isBusy =
@@ -112,8 +136,6 @@ export default function Home() {
   // =========================
 
   const fetchUsers = async () => {
-    if (isBusy) return;
-
     try {
       setLoading(true);
       setError("");
@@ -144,6 +166,10 @@ export default function Home() {
     }
   };
 
+  // =========================
+  // INITIAL LOAD
+  // =========================
+
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -164,9 +190,25 @@ export default function Home() {
 
     setEditingId(null);
 
+    // IMPORTANT:
+    // Empty file input
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+  };
+
+  // =========================
+  // GET IMAGE FILENAME
+  // =========================
+
+  const getImageName = (
+    imageUrl: string
+  ) => {
+    if (!imageUrl) return "";
+
+    return imageUrl
+      .split("/")
+      .pop() || "";
   };
 
   // =========================
@@ -180,8 +222,11 @@ export default function Home() {
 
     const file = e.target.files?.[0];
 
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
+    // Only PNG / JPEG
     const allowedTypes = [
       "image/png",
       "image/jpeg",
@@ -200,7 +245,7 @@ export default function Home() {
       return;
     }
 
-    // 5 MB validation
+    // 5 MB
     if (file.size > 5 * 1024 * 1024) {
       showError(
         "File too large! Maximum size is 5 MB."
@@ -216,6 +261,7 @@ export default function Home() {
 
     setProfileImage(file);
 
+    // Preview
     const previewUrl =
       URL.createObjectURL(file);
 
@@ -226,7 +272,7 @@ export default function Home() {
   };
 
   // =========================
-  // UPLOAD PROFILE IMAGE
+  // UPLOAD IMAGE
   // =========================
 
   const uploadProfileImage = async (
@@ -259,7 +305,7 @@ export default function Home() {
 
     if (!result.data?.url) {
       throw new Error(
-        "Image uploaded but URL was not returned."
+        "Image URL was not returned by server."
       );
     }
 
@@ -291,10 +337,12 @@ export default function Home() {
       user._id
     );
 
+    // Existing image
     setExistingImage(
       user.profileImage || ""
     );
 
+    // New image reset
     setProfileImage(null);
     setImagePreview("");
 
@@ -312,7 +360,7 @@ export default function Home() {
   };
 
   // =========================
-  // CREATE / UPDATE USER
+  // CREATE / UPDATE
   // =========================
 
   const handleSubmit = async (
@@ -325,6 +373,7 @@ export default function Home() {
     setMessage("");
     setError("");
 
+    // Required fields
     if (
       !userName.trim() ||
       !email.trim()
@@ -336,6 +385,7 @@ export default function Home() {
       return;
     }
 
+    // Password required only for create
     if (
       !editingId &&
       !password.trim()
@@ -350,17 +400,17 @@ export default function Home() {
     try {
       setLoading(true);
 
-      // =========================
-      // UPLOAD IMAGE
-      // =========================
-
-      let uploadedImageUrl =
+      let imageUrl =
         editingId
           ? existingImage
           : "";
 
+      // =========================
+      // UPLOAD NEW IMAGE
+      // =========================
+
       if (profileImage) {
-        uploadedImageUrl =
+        imageUrl =
           await uploadProfileImage(
             profileImage
           );
@@ -378,11 +428,9 @@ export default function Home() {
         const updateData: {
           userName: string;
           email: string;
-          role:
-            | "student"
-            | "trainer";
-          password?: string;
+          role: "student" | "trainer";
           profileImage?: string;
+          password?: string;
         } = {
           userName:
             userName.trim(),
@@ -393,9 +441,10 @@ export default function Home() {
           role,
 
           profileImage:
-            uploadedImageUrl,
+            imageUrl,
         };
 
+        // Password only if entered
         if (password.trim()) {
           updateData.password =
             password;
@@ -469,7 +518,7 @@ export default function Home() {
                 role,
 
                 profileImage:
-                  uploadedImageUrl,
+                  imageUrl,
               }),
           }
         );
@@ -489,6 +538,7 @@ export default function Home() {
           "User saved successfully!"
       );
 
+      // Empty complete form
       resetForm();
 
       await fetchUsers();
@@ -506,7 +556,7 @@ export default function Home() {
   };
 
   // =========================
-  // OPEN DELETE MODAL
+  // DELETE USER MODAL
   // =========================
 
   const handleDeleteClick = (
@@ -578,7 +628,7 @@ export default function Home() {
   };
 
   // =========================
-  // OPEN DELETE ALL MODAL
+  // DELETE ALL MODAL
   // =========================
 
   const handleDeleteAllClick =
@@ -602,7 +652,7 @@ export default function Home() {
     };
 
   // =========================
-  // DELETE ALL
+  // DELETE ALL USERS
   // =========================
 
   const confirmDeleteAll =
@@ -661,6 +711,10 @@ export default function Home() {
       }
     };
 
+  // =========================
+  // UI
+  // =========================
+
   return (
     <main className="min-h-screen bg-slate-100 px-3 py-6 sm:px-6 sm:py-10">
 
@@ -683,7 +737,7 @@ export default function Home() {
         </div>
 
         {/* =========================
-            SUCCESS MESSAGE
+            SUCCESS
         ========================= */}
 
         {message && (
@@ -711,7 +765,7 @@ export default function Home() {
         )}
 
         {/* =========================
-            ERROR MESSAGE
+            ERROR
         ========================= */}
 
         {error && (
@@ -739,7 +793,7 @@ export default function Home() {
         )}
 
         {/* =========================
-            ADD / UPDATE USER
+            FORM
         ========================= */}
 
         <section className="mb-7 rounded-2xl bg-white p-4 shadow-sm sm:mb-8 sm:p-6">
@@ -882,56 +936,94 @@ export default function Home() {
 
               </div>
 
-              {/* PROFILE IMAGE */}
+              {/* =========================
+                  PROFILE IMAGE
+              ========================= */}
 
               <div className="md:col-span-2">
 
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
-
                   Profile Image
-
-                  {editingId && (
-                    <span className="ml-2 text-xs font-normal text-slate-400">
-                      Optional
-                    </span>
-                  )}
-
                 </label>
 
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <input
+                  ref={
+                    fileInputRef
+                  }
+                  type="file"
+                  accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                  onChange={
+                    handleImageChange
+                  }
+                  disabled={isBusy}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100"
+                />
 
-                  <input
-                    ref={
-                      fileInputRef
-                    }
-                    type="file"
-                    accept=".png,.jpg,.jpeg,image/png,image/jpeg"
-                    onChange={
-                      handleImageChange
-                    }
-                    disabled={isBusy}
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100"
-                  />
+                {/* =========================
+                    CURRENT / NEW IMAGE INFO
+                ========================= */}
 
-                  {(imagePreview ||
-                    existingImage) && (
-
-                    <div className="shrink-0">
+                {editingId &&
+                  existingImage &&
+                  !profileImage && (
+                    <div className="mt-4 flex flex-col gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center">
 
                       <img
-                        src={
-                          imagePreview ||
-                          `${API_URL}${existingImage}`
-                        }
-                        alt="Profile preview"
+                        src={`${API_URL}${existingImage}`}
+                        alt="Current profile"
                         className="h-20 w-20 rounded-xl border border-slate-200 object-cover"
                       />
 
-                    </div>
+                      <div>
 
+                        <p className="text-sm font-semibold text-slate-700">
+                          Current Image
+                        </p>
+
+                        <p className="mt-1 break-all text-sm text-slate-500">
+                          {
+                            getImageName(
+                              existingImage
+                            )
+                          }
+                        </p>
+
+                      </div>
+
+                    </div>
                   )}
 
-                </div>
+                {/* NEW IMAGE */}
+
+                {profileImage && (
+                  <div className="mt-4 flex flex-col gap-4 rounded-xl border border-blue-200 bg-blue-50 p-4 sm:flex-row sm:items-center">
+
+                    {imagePreview && (
+                      <img
+                        src={
+                          imagePreview
+                        }
+                        alt="New profile preview"
+                        className="h-20 w-20 rounded-xl border border-blue-200 object-cover"
+                      />
+                    )}
+
+                    <div>
+
+                      <p className="text-sm font-semibold text-blue-700">
+                        New Image Selected
+                      </p>
+
+                      <p className="mt-1 break-all text-sm text-blue-600">
+                        {
+                          profileImage.name
+                        }
+                      </p>
+
+                    </div>
+
+                  </div>
+                )}
 
                 <p className="mt-2 text-xs text-slate-400">
                   Only PNG and JPEG/JPG images are allowed. Maximum size is 5 MB.
@@ -941,7 +1033,9 @@ export default function Home() {
 
             </div>
 
-            {/* BUTTONS */}
+            {/* =========================
+                FORM BUTTONS
+            ========================= */}
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
 
@@ -966,6 +1060,7 @@ export default function Home() {
                     if (isBusy) return;
 
                     resetForm();
+
                     setMessage("");
                     setError("");
                   }}
@@ -1082,7 +1177,9 @@ export default function Home() {
               </div>
             )}
 
-          {/* TABLE */}
+          {/* =========================
+              TABLE
+          ========================= */}
 
           {users.length > 0 && (
             <div className="overflow-x-auto rounded-xl border border-slate-200">
@@ -1177,13 +1274,25 @@ export default function Home() {
 
                           {user.profileImage ? (
 
-                            <img
-                              src={`${API_URL}${user.profileImage}`}
-                              alt={
-                                user.userName
-                              }
-                              className="h-12 w-12 rounded-full border border-slate-200 object-cover"
-                            />
+                            <div className="flex items-center gap-3">
+
+                              <img
+                                src={`${API_URL}${user.profileImage}`}
+                                alt={
+                                  user.userName
+                                }
+                                className="h-12 w-12 rounded-full border border-slate-200 object-cover"
+                              />
+
+                              <span className="max-w-[180px] truncate text-xs text-slate-400">
+                                {
+                                  getImageName(
+                                    user.profileImage
+                                  )
+                                }
+                              </span>
+
+                            </div>
 
                           ) : (
 
@@ -1209,7 +1318,9 @@ export default function Home() {
                                   user
                                 )
                               }
-                              disabled={isBusy}
+                              disabled={
+                                isBusy
+                              }
                               className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               Edit
@@ -1223,7 +1334,9 @@ export default function Home() {
                                   user
                                 )
                               }
-                              disabled={isBusy}
+                              disabled={
+                                isBusy
+                              }
                               className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               {deletingId ===
@@ -1237,7 +1350,6 @@ export default function Home() {
                         </td>
 
                       </tr>
-
                     )
                   )}
 
