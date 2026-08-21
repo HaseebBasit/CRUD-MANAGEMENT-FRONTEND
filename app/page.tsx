@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 interface User {
   _id: string;
@@ -11,7 +15,8 @@ interface User {
   createdAt?: string;
 }
 
-const API_URL = "https://crud-management-backend.onrender.com";
+const API_URL =
+  "https://crud-management-backend.onrender.com";
 
 export default function Home() {
   const [users, setUsers] = useState<User[]>([]);
@@ -19,6 +24,7 @@ export default function Home() {
   const [userName, setUserName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const [role, setRole] =
     useState<"student" | "trainer">("student");
 
@@ -26,15 +32,17 @@ export default function Home() {
     useState<File | null>(null);
 
   const [imagePreview, setImagePreview] =
-    useState<string>("");
+    useState("");
+
+  const [existingImage, setExistingImage] =
+    useState("");
 
   const [editingId, setEditingId] =
     useState<string | null>(null);
 
-  const [existingImage, setExistingImage] =
-    useState<string>("");
+  const [loading, setLoading] =
+    useState(false);
 
-  const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] =
     useState<string | null>(null);
 
@@ -44,14 +52,36 @@ export default function Home() {
   const [deletingAll, setDeletingAll] =
     useState(false);
 
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [message, setMessage] =
+    useState("");
+
+  const [error, setError] =
+    useState("");
 
   const [deleteUser, setDeleteUser] =
     useState<User | null>(null);
 
-  const [showDeleteAllModal, setShowDeleteAllModal] =
-    useState(false);
+  const [
+    showDeleteAllModal,
+    setShowDeleteAllModal,
+  ] = useState(false);
+
+  // =========================
+  // FILE INPUT REF
+  // =========================
+
+  const fileInputRef =
+    useRef<HTMLInputElement | null>(null);
+
+  // =========================
+  // OPERATION LOCK
+  // =========================
+
+  const isBusy =
+    loading ||
+    deletingId !== null ||
+    updatingId !== null ||
+    deletingAll;
 
   // =========================
   // SUCCESS MESSAGE
@@ -82,6 +112,8 @@ export default function Home() {
   // =========================
 
   const fetchUsers = async () => {
+    if (isBusy) return;
+
     try {
       setLoading(true);
       setError("");
@@ -94,15 +126,19 @@ export default function Home() {
 
       if (!response.ok) {
         throw new Error(
-          result.message || "Failed to fetch users"
+          result.message ||
+            "Failed to fetch users"
         );
       }
 
       setUsers(result.data || []);
+
     } catch (error: any) {
       showError(
-        error.message || "Something went wrong"
+        error.message ||
+          "Something went wrong"
       );
+
     } finally {
       setLoading(false);
     }
@@ -127,6 +163,10 @@ export default function Home() {
     setExistingImage("");
 
     setEditingId(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   // =========================
@@ -136,14 +176,15 @@ export default function Home() {
   const handleImageChange = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
+    if (isBusy) return;
+
     const file = e.target.files?.[0];
 
     if (!file) return;
 
-    // Frontend validation
     const allowedTypes = [
       "image/png",
-      "image/jpeg"
+      "image/jpeg",
     ];
 
     if (!allowedTypes.includes(file.type)) {
@@ -152,6 +193,21 @@ export default function Home() {
       );
 
       e.target.value = "";
+
+      setProfileImage(null);
+      setImagePreview("");
+
+      return;
+    }
+
+    // 5 MB validation
+    if (file.size > 5 * 1024 * 1024) {
+      showError(
+        "File too large! Maximum size is 5 MB."
+      );
+
+      e.target.value = "";
+
       setProfileImage(null);
       setImagePreview("");
 
@@ -160,7 +216,8 @@ export default function Home() {
 
     setProfileImage(file);
 
-    const previewUrl = URL.createObjectURL(file);
+    const previewUrl =
+      URL.createObjectURL(file);
 
     setImagePreview(previewUrl);
 
@@ -177,17 +234,21 @@ export default function Home() {
   ): Promise<string> => {
     const formData = new FormData();
 
-    formData.append("image", file);
+    formData.append(
+      "image",
+      file
+    );
 
     const response = await fetch(
       `${API_URL}/api/profile/upload`,
       {
         method: "POST",
-        body: formData
+        body: formData,
       }
     );
 
-    const result = await response.json();
+    const result =
+      await response.json();
 
     if (!response.ok) {
       throw new Error(
@@ -210,23 +271,43 @@ export default function Home() {
   // =========================
 
   const handleEdit = (user: User) => {
-    setUserName(user.userName);
-    setEmail(user.email);
-    setRole(user.role);
+    if (isBusy) return;
+
+    setUserName(
+      user.userName
+    );
+
+    setEmail(
+      user.email
+    );
+
+    setRole(
+      user.role
+    );
+
     setPassword("");
 
-    setEditingId(user._id);
+    setEditingId(
+      user._id
+    );
 
-    setExistingImage(user.profileImage || "");
+    setExistingImage(
+      user.profileImage || ""
+    );
+
     setProfileImage(null);
     setImagePreview("");
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
 
     setMessage("");
     setError("");
 
     window.scrollTo({
       top: 0,
-      behavior: "smooth"
+      behavior: "smooth",
     });
   };
 
@@ -239,36 +320,50 @@ export default function Home() {
   ) => {
     e.preventDefault();
 
+    if (isBusy) return;
+
     setMessage("");
     setError("");
 
-    if (!userName.trim() || !email.trim()) {
+    if (
+      !userName.trim() ||
+      !email.trim()
+    ) {
       showError(
         "Please fill all required fields."
       );
+
       return;
     }
 
-    if (!editingId && !password.trim()) {
+    if (
+      !editingId &&
+      !password.trim()
+    ) {
       showError(
         "Password is required for a new user."
       );
+
       return;
     }
 
     try {
       setLoading(true);
 
-      let uploadedImageUrl =
-        editingId ? existingImage : "";
-
       // =========================
       // UPLOAD IMAGE
       // =========================
 
+      let uploadedImageUrl =
+        editingId
+          ? existingImage
+          : "";
+
       if (profileImage) {
         uploadedImageUrl =
-          await uploadProfileImage(profileImage);
+          await uploadProfileImage(
+            profileImage
+          );
       }
 
       // =========================
@@ -276,37 +371,56 @@ export default function Home() {
       // =========================
 
       if (editingId) {
-        setUpdatingId(editingId);
+        setUpdatingId(
+          editingId
+        );
 
         const updateData: {
           userName: string;
           email: string;
-          role: "student" | "trainer";
+          role:
+            | "student"
+            | "trainer";
           password?: string;
           profileImage?: string;
         } = {
-          userName: userName.trim(),
-          email: email.trim(),
+          userName:
+            userName.trim(),
+
+          email:
+            email.trim(),
+
           role,
-          profileImage: uploadedImageUrl
+
+          profileImage:
+            uploadedImageUrl,
         };
 
         if (password.trim()) {
-          updateData.password = password;
+          updateData.password =
+            password;
         }
 
-        const response = await fetch(
-          `${API_URL}/user/update/${editingId}`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(updateData)
-          }
-        );
+        const response =
+          await fetch(
+            `${API_URL}/user/update/${editingId}`,
+            {
+              method: "PUT",
 
-        const result = await response.json();
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify(
+                  updateData
+                ),
+            }
+          );
+
+        const result =
+          await response.json();
 
         if (!response.ok) {
           throw new Error(
@@ -331,24 +445,37 @@ export default function Home() {
       // CREATE
       // =========================
 
-      const response = await fetch(
-        `${API_URL}/user/save`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            userName: userName.trim(),
-            email: email.trim(),
-            password,
-            role,
-            profileImage: uploadedImageUrl
-          })
-        }
-      );
+      const response =
+        await fetch(
+          `${API_URL}/user/save`,
+          {
+            method: "POST",
 
-      const result = await response.json();
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                userName:
+                  userName.trim(),
+
+                email:
+                  email.trim(),
+
+                password,
+
+                role,
+
+                profileImage:
+                  uploadedImageUrl,
+              }),
+          }
+        );
+
+      const result =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -365,11 +492,13 @@ export default function Home() {
       resetForm();
 
       await fetchUsers();
+
     } catch (error: any) {
       showError(
         error.message ||
           "Something went wrong"
       );
+
     } finally {
       setLoading(false);
       setUpdatingId(null);
@@ -380,8 +509,13 @@ export default function Home() {
   // OPEN DELETE MODAL
   // =========================
 
-  const handleDeleteClick = (user: User) => {
+  const handleDeleteClick = (
+    user: User
+  ) => {
+    if (isBusy) return;
+
     setDeleteUser(user);
+
     setMessage("");
     setError("");
   };
@@ -393,19 +527,26 @@ export default function Home() {
   const confirmDelete = async () => {
     if (!deleteUser) return;
 
+    if (isBusy) return;
+
     try {
-      setDeletingId(deleteUser._id);
+      setDeletingId(
+        deleteUser._id
+      );
+
       setMessage("");
       setError("");
 
-      const response = await fetch(
-        `${API_URL}/user/delete/${deleteUser._id}`,
-        {
-          method: "DELETE"
-        }
-      );
+      const response =
+        await fetch(
+          `${API_URL}/user/delete/${deleteUser._id}`,
+          {
+            method: "DELETE",
+          }
+        );
 
-      const result = await response.json();
+      const result =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -422,6 +563,7 @@ export default function Home() {
       );
 
       await fetchUsers();
+
     } catch (error: any) {
       setDeleteUser(null);
 
@@ -429,6 +571,7 @@ export default function Home() {
         error.message ||
           "Something went wrong"
       );
+
     } finally {
       setDeletingId(null);
     }
@@ -438,73 +581,94 @@ export default function Home() {
   // OPEN DELETE ALL MODAL
   // =========================
 
-  const handleDeleteAllClick = () => {
-    if (users.length === 0) {
-      showError(
-        "There are no users to delete."
-      );
-      return;
-    }
+  const handleDeleteAllClick =
+    () => {
+      if (isBusy) return;
 
-    setShowDeleteAllModal(true);
-    setMessage("");
-    setError("");
-  };
-
-  // =========================
-  // DELETE ALL USERS
-  // =========================
-
-  const confirmDeleteAll = async () => {
-    try {
-      setDeletingAll(true);
-      setMessage("");
-      setError("");
-
-      const response = await fetch(
-        `${API_URL}/users/delete-all`,
-        {
-          method: "DELETE"
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.message ||
-            "Failed to delete all users"
+      if (users.length === 0) {
+        showError(
+          "There are no users to delete."
         );
+
+        return;
       }
 
-      setShowDeleteAllModal(false);
-
-      resetForm();
-
-      showMessage(
-        result.message ||
-          "All users deleted successfully!"
+      setShowDeleteAllModal(
+        true
       );
 
-      await fetchUsers();
-    } catch (error: any) {
-      setShowDeleteAllModal(false);
+      setMessage("");
+      setError("");
+    };
 
-      showError(
-        error.message ||
-          "Something went wrong"
-      );
-    } finally {
-      setDeletingAll(false);
-    }
-  };
+  // =========================
+  // DELETE ALL
+  // =========================
+
+  const confirmDeleteAll =
+    async () => {
+      if (isBusy) return;
+
+      try {
+        setDeletingAll(true);
+
+        setMessage("");
+        setError("");
+
+        const response =
+          await fetch(
+            `${API_URL}/users/delete-all`,
+            {
+              method: "DELETE",
+            }
+          );
+
+        const result =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result.message ||
+              "Failed to delete all users"
+          );
+        }
+
+        setShowDeleteAllModal(
+          false
+        );
+
+        resetForm();
+
+        showMessage(
+          result.message ||
+            "All users deleted successfully!"
+        );
+
+        await fetchUsers();
+
+      } catch (error: any) {
+        setShowDeleteAllModal(
+          false
+        );
+
+        showError(
+          error.message ||
+            "Something went wrong"
+        );
+
+      } finally {
+        setDeletingAll(false);
+      }
+    };
 
   return (
     <main className="min-h-screen bg-slate-100 px-3 py-6 sm:px-6 sm:py-10">
 
       <div className="mx-auto w-full max-w-6xl">
 
-        {/* HEADER */}
+        {/* =========================
+            HEADER
+        ========================= */}
 
         <div className="mb-7 sm:mb-8">
 
@@ -518,7 +682,9 @@ export default function Home() {
 
         </div>
 
-        {/* SUCCESS MESSAGE */}
+        {/* =========================
+            SUCCESS MESSAGE
+        ========================= */}
 
         {message && (
           <div className="mb-5 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-4 text-sm font-medium text-green-700">
@@ -533,7 +699,9 @@ export default function Home() {
 
             <button
               type="button"
-              onClick={() => setMessage("")}
+              onClick={() =>
+                setMessage("")
+              }
               className="text-lg leading-none text-green-600 hover:text-green-800"
             >
               ×
@@ -542,7 +710,9 @@ export default function Home() {
           </div>
         )}
 
-        {/* ERROR MESSAGE */}
+        {/* =========================
+            ERROR MESSAGE
+        ========================= */}
 
         {error && (
           <div className="mb-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm font-medium text-red-700">
@@ -557,7 +727,9 @@ export default function Home() {
 
             <button
               type="button"
-              onClick={() => setError("")}
+              onClick={() =>
+                setError("")
+              }
               className="text-lg leading-none text-red-600 hover:text-red-800"
             >
               ×
@@ -566,7 +738,9 @@ export default function Home() {
           </div>
         )}
 
-        {/* ADD / UPDATE USER */}
+        {/* =========================
+            ADD / UPDATE USER
+        ========================= */}
 
         <section className="mb-7 rounded-2xl bg-white p-4 shadow-sm sm:mb-8 sm:p-6">
 
@@ -586,7 +760,11 @@ export default function Home() {
 
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form
+            onSubmit={
+              handleSubmit
+            }
+          >
 
             <div className="grid gap-4 sm:gap-5 md:grid-cols-2">
 
@@ -602,10 +780,13 @@ export default function Home() {
                   type="text"
                   value={userName}
                   onChange={(e) =>
-                    setUserName(e.target.value)
+                    setUserName(
+                      e.target.value
+                    )
                   }
+                  disabled={isBusy}
                   placeholder="Enter user name"
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100"
                 />
 
               </div>
@@ -622,10 +803,13 @@ export default function Home() {
                   type="email"
                   value={email}
                   onChange={(e) =>
-                    setEmail(e.target.value)
+                    setEmail(
+                      e.target.value
+                    )
                   }
+                  disabled={isBusy}
                   placeholder="Enter email"
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100"
                 />
 
               </div>
@@ -650,14 +834,17 @@ export default function Home() {
                   type="password"
                   value={password}
                   onChange={(e) =>
-                    setPassword(e.target.value)
+                    setPassword(
+                      e.target.value
+                    )
                   }
+                  disabled={isBusy}
                   placeholder={
                     editingId
                       ? "Leave empty to keep current password"
                       : "Enter password"
                   }
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100"
                 />
 
               </div>
@@ -679,7 +866,8 @@ export default function Home() {
                         | "trainer"
                     )
                   }
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200"
+                  disabled={isBusy}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100"
                 >
 
                   <option value="student">
@@ -699,24 +887,35 @@ export default function Home() {
               <div className="md:col-span-2">
 
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
+
                   Profile Image
+
                   {editingId && (
                     <span className="ml-2 text-xs font-normal text-slate-400">
                       Optional
                     </span>
                   )}
+
                 </label>
 
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
 
                   <input
+                    ref={
+                      fileInputRef
+                    }
                     type="file"
                     accept=".png,.jpg,.jpeg,image/png,image/jpeg"
-                    onChange={handleImageChange}
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-slate-700"
+                    onChange={
+                      handleImageChange
+                    }
+                    disabled={isBusy}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
 
-                  {(imagePreview || existingImage) && (
+                  {(imagePreview ||
+                    existingImage) && (
+
                     <div className="shrink-0">
 
                       <img
@@ -729,12 +928,13 @@ export default function Home() {
                       />
 
                     </div>
+
                   )}
 
                 </div>
 
                 <p className="mt-2 text-xs text-slate-400">
-                  Only PNG and JPEG/JPG images are allowed.
+                  Only PNG and JPEG/JPG images are allowed. Maximum size is 5 MB.
                 </p>
 
               </div>
@@ -747,7 +947,7 @@ export default function Home() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={isBusy}
                 className="w-full rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 {editingId
@@ -763,11 +963,14 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => {
+                    if (isBusy) return;
+
                     resetForm();
                     setMessage("");
                     setError("");
                   }}
-                  className="w-full rounded-xl border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
+                  disabled={isBusy}
+                  className="w-full rounded-xl border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
                   Cancel
                 </button>
@@ -779,7 +982,9 @@ export default function Home() {
 
         </section>
 
-        {/* EXISTING USERS */}
+        {/* =========================
+            EXISTING USERS
+        ========================= */}
 
         <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
 
@@ -799,20 +1004,30 @@ export default function Home() {
 
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
 
-              <button
-                onClick={fetchUsers}
-                disabled={loading || deletingAll}
-                className="w-full rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 sm:w-auto"
-              >
-                Refresh
-              </button>
+              {/* REFRESH */}
 
               <button
-                onClick={handleDeleteAllClick}
+                onClick={
+                  fetchUsers
+                }
+                disabled={isBusy}
+                className="w-full rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+              >
+                {loading
+                  ? "Refreshing..."
+                  : "Refresh"}
+              </button>
+
+              {/* DELETE ALL */}
+
+              <button
+                onClick={
+                  handleDeleteAllClick
+                }
                 disabled={
-                  users.length === 0 ||
-                  loading ||
-                  deletingAll
+                  users.length ===
+                    0 ||
+                  isBusy
                 }
                 className="w-full rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
@@ -833,7 +1048,9 @@ export default function Home() {
               Total Users:{" "}
 
               <span className="font-bold text-slate-900">
-                {users.length}
+                {
+                  users.length
+                }
               </span>
 
             </div>
@@ -841,27 +1058,29 @@ export default function Home() {
 
           {/* LOADING */}
 
-          {loading && users.length === 0 && (
-            <div className="py-12 text-center text-sm text-slate-500">
-              Loading users...
-            </div>
-          )}
+          {loading &&
+            users.length === 0 && (
+              <div className="py-12 text-center text-sm text-slate-500">
+                Loading users...
+              </div>
+            )}
 
           {/* EMPTY */}
 
-          {!loading && users.length === 0 && (
-            <div className="rounded-xl border border-dashed border-slate-300 py-12 text-center">
+          {!loading &&
+            users.length === 0 && (
+              <div className="rounded-xl border border-dashed border-slate-300 py-12 text-center">
 
-              <p className="font-semibold text-slate-700">
-                No users found
-              </p>
+                <p className="font-semibold text-slate-700">
+                  No users found
+                </p>
 
-              <p className="mt-1 text-sm text-slate-500">
-                Add a user using the form above.
-              </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  Add a user using the form above.
+                </p>
 
-            </div>
-          )}
+              </div>
+            )}
 
           {/* TABLE */}
 
@@ -900,99 +1119,127 @@ export default function Home() {
 
                 <tbody>
 
-                  {users.map((user) => (
+                  {users.map(
+                    (user) => (
 
-                    <tr
-                      key={user._id}
-                      className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
-                    >
+                      <tr
+                        key={
+                          user._id
+                        }
+                        className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
+                      >
 
-                      {/* USER */}
+                        {/* USER */}
 
-                      <td className="px-4 py-5">
+                        <td className="px-4 py-5">
 
-                        <div className="font-semibold text-slate-900">
-                          {user.userName}
-                        </div>
-
-                        <div className="mt-1 text-xs text-slate-400">
-                          ID: {user._id.slice(0, 8)}
-                        </div>
-
-                      </td>
-
-                      {/* EMAIL */}
-
-                      <td className="px-4 py-5 text-sm text-slate-600">
-                        {user.email}
-                      </td>
-
-                      {/* ROLE */}
-
-                      <td className="px-4 py-5">
-
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold capitalize text-slate-700">
-                          {user.role}
-                        </span>
-
-                      </td>
-
-                      {/* PROFILE */}
-
-                      <td className="px-4 py-5">
-
-                        {user.profileImage ? (
-                          <img
-                            src={`${API_URL}${user.profileImage}`}
-                            alt={user.userName}
-                            className="h-12 w-12 rounded-full border border-slate-200 object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-400">
-                            N/A
+                          <div className="font-semibold text-slate-900">
+                            {
+                              user.userName
+                            }
                           </div>
-                        )}
 
-                      </td>
-
-                      {/* ACTIONS */}
-
-                      <td className="px-4 py-5">
-
-                        <div className="flex flex-wrap gap-2">
-
-                          <button
-                            onClick={() =>
-                              handleEdit(user)
+                          <div className="mt-1 text-xs text-slate-400">
+                            ID:{" "}
+                            {
+                              user._id.slice(
+                                0,
+                                8
+                              )
                             }
-                            className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
-                          >
-                            Edit
-                          </button>
+                          </div>
 
-                          <button
-                            onClick={() =>
-                              handleDeleteClick(user)
+                        </td>
+
+                        {/* EMAIL */}
+
+                        <td className="px-4 py-5 text-sm text-slate-600">
+                          {
+                            user.email
+                          }
+                        </td>
+
+                        {/* ROLE */}
+
+                        <td className="px-4 py-5">
+
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold capitalize text-slate-700">
+                            {
+                              user.role
                             }
-                            disabled={
-                              deletingId ===
+                          </span>
+
+                        </td>
+
+                        {/* PROFILE */}
+
+                        <td className="px-4 py-5">
+
+                          {user.profileImage ? (
+
+                            <img
+                              src={`${API_URL}${user.profileImage}`}
+                              alt={
+                                user.userName
+                              }
+                              className="h-12 w-12 rounded-full border border-slate-200 object-cover"
+                            />
+
+                          ) : (
+
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-400">
+                              N/A
+                            </div>
+
+                          )}
+
+                        </td>
+
+                        {/* ACTIONS */}
+
+                        <td className="px-4 py-5">
+
+                          <div className="flex flex-wrap gap-2">
+
+                            {/* EDIT */}
+
+                            <button
+                              onClick={() =>
+                                handleEdit(
+                                  user
+                                )
+                              }
+                              disabled={isBusy}
+                              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              Edit
+                            </button>
+
+                            {/* DELETE */}
+
+                            <button
+                              onClick={() =>
+                                handleDeleteClick(
+                                  user
+                                )
+                              }
+                              disabled={isBusy}
+                              className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {deletingId ===
                               user._id
-                            }
-                            className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {deletingId ===
-                            user._id
-                              ? "Deleting..."
-                              : "Delete"}
-                          </button>
+                                ? "Deleting..."
+                                : "Delete"}
+                            </button>
 
-                        </div>
+                          </div>
 
-                      </td>
+                        </td>
 
-                    </tr>
+                      </tr>
 
-                  ))}
+                    )
+                  )}
 
                 </tbody>
 
@@ -1005,7 +1252,9 @@ export default function Home() {
 
       </div>
 
-      {/* DELETE ONE MODAL */}
+      {/* =========================
+          DELETE ONE MODAL
+      ========================= */}
 
       {deleteUser && (
 
@@ -1022,23 +1271,27 @@ export default function Home() {
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              Are you sure you want to delete
-              this user? This action cannot be
-              undone.
+              Are you sure you want to delete this user? This action cannot be undone.
             </p>
 
             <div className="mt-5 rounded-xl bg-slate-50 p-4">
 
               <p className="font-semibold text-slate-900">
-                {deleteUser.userName}
+                {
+                  deleteUser.userName
+                }
               </p>
 
               <p className="mt-1 break-all text-sm text-slate-500">
-                {deleteUser.email}
+                {
+                  deleteUser.email
+                }
               </p>
 
               <p className="mt-1 text-xs capitalize text-slate-400">
-                {deleteUser.role}
+                {
+                  deleteUser.role
+                }
               </p>
 
             </div>
@@ -1048,23 +1301,25 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() =>
-                  setDeleteUser(null)
+                  setDeleteUser(
+                    null
+                  )
                 }
                 disabled={
-                  deletingId ===
-                  deleteUser._id
+                  deletingId !== null
                 }
-                className="w-full rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 sm:w-auto"
+                className="w-full rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 Cancel
               </button>
 
               <button
                 type="button"
-                onClick={confirmDelete}
+                onClick={
+                  confirmDelete
+                }
                 disabled={
-                  deletingId ===
-                  deleteUser._id
+                  deletingId !== null
                 }
                 className="w-full rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
@@ -1081,7 +1336,9 @@ export default function Home() {
         </div>
       )}
 
-      {/* DELETE ALL MODAL */}
+      {/* =========================
+          DELETE ALL MODAL
+      ========================= */}
 
       {showDeleteAllModal && (
 
@@ -1098,11 +1355,17 @@ export default function Home() {
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-slate-500">
+
               This will permanently delete all{" "}
+
               <span className="font-bold text-red-600">
-                {users.length}
+                {
+                  users.length
+                }
               </span>{" "}
+
               users from the database.
+
             </p>
 
             <div className="mt-5 rounded-xl border border-red-100 bg-red-50 p-4">
@@ -1112,8 +1375,7 @@ export default function Home() {
               </p>
 
               <p className="mt-1 text-xs text-red-600">
-                All user records will be permanently
-                removed.
+                All user records will be permanently removed.
               </p>
 
             </div>
@@ -1123,18 +1385,26 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() =>
-                  setShowDeleteAllModal(false)
+                  setShowDeleteAllModal(
+                    false
+                  )
                 }
-                disabled={deletingAll}
-                className="w-full rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 sm:w-auto"
+                disabled={
+                  deletingAll
+                }
+                className="w-full rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 Cancel
               </button>
 
               <button
                 type="button"
-                onClick={confirmDeleteAll}
-                disabled={deletingAll}
+                onClick={
+                  confirmDeleteAll
+                }
+                disabled={
+                  deletingAll
+                }
                 className="w-full rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 {deletingAll
