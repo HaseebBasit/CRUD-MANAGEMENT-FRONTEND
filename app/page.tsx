@@ -2,9 +2,15 @@
 
 import {
   useEffect,
-  useRef,
   useState,
+  ChangeEvent,
+  FormEvent,
 } from "react";
+
+
+// =========================
+// USER INTERFACE
+// =========================
 
 interface User {
   _id: string;
@@ -16,42 +22,69 @@ interface User {
   updatedAt?: string;
 }
 
+
+// =========================
+// API URL
+// =========================
+
 const API_URL =
   "https://crud-management-backend.onrender.com";
 
+
+// =========================
+// HOME
+// =========================
+
 export default function Home() {
+
   // =========================
   // USERS
   // =========================
 
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] =
+    useState<User[]>([]);
+
 
   // =========================
   // FORM
   // =========================
 
-  const [userName, setUserName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [userName, setUserName] =
+    useState("");
+
+  const [email, setEmail] =
+    useState("");
+
+  const [password, setPassword] =
+    useState("");
 
   const [role, setRole] =
-    useState<"student" | "trainer">("student");
+    useState<"student" | "trainer">(
+      "student"
+    );
 
-  const [editingId, setEditingId] =
-    useState<string | null>(null);
 
   // =========================
   // IMAGE
   // =========================
 
-  const [selectedFile, setSelectedFile] =
-    useState<File | null>(null);
+  const [profileImage, setProfileImage] =
+    useState("");
 
-  const [uploadingImageId, setUploadingImageId] =
+  const [selectedFileName, setSelectedFileName] =
+    useState("");
+
+  const [uploadingImage, setUploadingImage] =
+    useState(false);
+
+
+  // =========================
+  // EDITING
+  // =========================
+
+  const [editingId, setEditingId] =
     useState<string | null>(null);
 
-  const fileInputRef =
-    useRef<HTMLInputElement | null>(null);
 
   // =========================
   // LOADING STATES
@@ -69,6 +102,7 @@ export default function Home() {
   const [deletingAll, setDeletingAll] =
     useState(false);
 
+
   // =========================
   // MESSAGES
   // =========================
@@ -79,83 +113,189 @@ export default function Home() {
   const [error, setError] =
     useState("");
 
+
   // =========================
-  // MODALS
+  // DELETE MODALS
   // =========================
 
   const [deleteUser, setDeleteUser] =
     useState<User | null>(null);
 
-  const [showDeleteAllModal, setShowDeleteAllModal] =
-    useState(false);
+  const [
+    showDeleteAllModal,
+    setShowDeleteAllModal
+  ] = useState(false);
 
-  // =====================================================
-  // ACTION STATES
-  // =====================================================
 
-  const isBusy =
-    loading ||
-    deletingId !== null ||
-    updatingId !== null ||
-    deletingAll ||
-    uploadingImageId !== null;
-
-  const isEditing =
-    editingId !== null;
-
-  // =====================================================
+  // =========================
   // SUCCESS MESSAGE
-  // =====================================================
+  // =========================
 
-  const showMessage = (text: string) => {
+  const showMessage = (
+    text: string
+  ) => {
+
     setMessage(text);
 
     setTimeout(() => {
       setMessage("");
     }, 4000);
+
   };
 
-  // =====================================================
-  // ERROR MESSAGE
-  // =====================================================
 
-  const showError = (text: string) => {
+  // =========================
+  // ERROR MESSAGE
+  // =========================
+
+  const showError = (
+    text: string
+  ) => {
+
     setError(text);
 
     setTimeout(() => {
       setError("");
-    }, 4000);
+    }, 5000);
+
   };
 
-  // =====================================================
-  // FETCH USERS
-  // =====================================================
 
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      setError("");
+  // =========================
+  // TIME AGO
+  // =========================
 
-      const response = await fetch(
-        `${API_URL}/users/fetch`
+  const timeAgo = (
+    date?: string
+  ) => {
+
+    if (!date) {
+      return "Unknown";
+    }
+
+
+    const createdTime =
+      new Date(date).getTime();
+
+    const currentTime =
+      Date.now();
+
+    const difference =
+      currentTime - createdTime;
+
+
+    const seconds =
+      Math.floor(
+        difference / 1000
       );
 
-      const result = await response.json();
+    const minutes =
+      Math.floor(
+        seconds / 60
+      );
+
+    const hours =
+      Math.floor(
+        minutes / 60
+      );
+
+    const days =
+      Math.floor(
+        hours / 24
+      );
+
+
+    if (seconds < 60) {
+      return "Just now";
+    }
+
+
+    if (minutes < 60) {
+
+      return `${minutes} minute${
+        minutes !== 1
+          ? "s"
+          : ""
+      } ago`;
+
+    }
+
+
+    if (hours < 24) {
+
+      return `${hours} hour${
+        hours !== 1
+          ? "s"
+          : ""
+      } ago`;
+
+    }
+
+
+    if (days < 30) {
+
+      return `${days} day${
+        days !== 1
+          ? "s"
+          : ""
+      } ago`;
+
+    }
+
+
+    return new Date(
+      date
+    ).toLocaleDateString();
+
+  };
+
+
+  // =========================
+  // GET USERS
+  // =========================
+
+  const fetchUsers = async () => {
+
+    try {
+
+      setLoading(true);
+
+      setError("");
+
+
+      const response =
+        await fetch(
+          `${API_URL}/users/fetch`,
+          {
+            cache: "no-store"
+          }
+        );
+
+
+      const result =
+        await response.json();
+
 
       if (!response.ok) {
+
         throw new Error(
           result.message ||
-            "Failed to fetch users"
+          "Failed to fetch users"
         );
+
       }
 
-      setUsers(result.data || []);
+
+      setUsers(
+        result.data || []
+      );
+
 
     } catch (error: any) {
 
       showError(
         error.message ||
-          "Something went wrong"
+        "Something went wrong"
       );
 
     } finally {
@@ -163,209 +303,313 @@ export default function Home() {
       setLoading(false);
 
     }
+
   };
 
-  // =====================================================
-  // FETCH ON PAGE LOAD
-  // =====================================================
+
+  // =========================
+  // INITIAL FETCH
+  // =========================
 
   useEffect(() => {
+
     fetchUsers();
+
   }, []);
 
-  // =====================================================
+
+  // =========================
   // RESET FORM
-  // =====================================================
+  // =========================
 
   const resetForm = () => {
+
     setUserName("");
+
     setEmail("");
+
     setPassword("");
+
     setRole("student");
+
+    setProfileImage("");
+
+    setSelectedFileName("");
+
     setEditingId(null);
-    setSelectedFile(null);
 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
   };
 
-  // =====================================================
-  // EDIT USER
-  // =====================================================
 
-  const handleEdit = (user: User) => {
-
-    if (isBusy) {
-      return;
-    }
-
-    setUserName(user.userName);
-    setEmail(user.email);
-    setRole(user.role);
-    setPassword("");
-
-    setEditingId(user._id);
-
-    setMessage("");
-    setError("");
-
-    setSelectedFile(null);
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  };
-
-  // =====================================================
+  // =========================
   // SELECT IMAGE
-  // =====================================================
+  // =========================
 
-  const handleFileChange = (
-    e: React.ChangeEvent<HTMLInputElement>
+  const handleImageChange = async (
+    e: ChangeEvent<HTMLInputElement>
   ) => {
 
-    const file = e.target.files?.[0];
+    const file =
+      e.target.files?.[0];
+
 
     if (!file) {
-      setSelectedFile(null);
       return;
     }
 
-    // Only PNG/JPEG
+
+    // =========================
+    // CHECK TYPE
+    // =========================
+
     const allowedTypes = [
       "image/png",
-      "image/jpeg",
+      "image/jpeg"
     ];
 
-    if (!allowedTypes.includes(file.type)) {
+
+    if (
+      !allowedTypes.includes(
+        file.type
+      )
+    ) {
 
       showError(
-        "Only PNG and JPEG images are allowed."
+        "Only PNG and JPEG/JPG images are allowed."
       );
 
       e.target.value = "";
-      setSelectedFile(null);
 
       return;
+
     }
 
-    // 5MB
-    if (file.size > 5 * 1024 * 1024) {
+
+    // =========================
+    // CHECK SIZE
+    // =========================
+
+    if (
+      file.size >
+      5 * 1024 * 1024
+    ) {
 
       showError(
-        "File too large! Maximum size is 5 MB."
+        "Image size must be less than 5 MB."
       );
 
       e.target.value = "";
-      setSelectedFile(null);
 
       return;
+
     }
 
-    setSelectedFile(file);
-  };
-
-  // =====================================================
-  // UPLOAD IMAGE
-  // =====================================================
-
-  const handleUploadImage = async (
-    user: User
-  ) => {
-
-    if (isBusy) {
-      return;
-    }
-
-    if (!selectedFile) {
-      showError(
-        "Please select a PNG or JPEG image."
-      );
-      return;
-    }
 
     try {
 
-      setUploadingImageId(user._id);
+      setUploadingImage(true);
 
-      setMessage("");
       setError("");
 
-      const formData = new FormData();
+      setSelectedFileName(
+        file.name
+      );
+
+
+      // =========================
+      // FORMDATA
+      // =========================
+
+      const formData =
+        new FormData();
+
 
       formData.append(
         "image",
-        selectedFile
+        file
       );
 
-      const response = await fetch(
-        `${API_URL}/api/profile/upload/${user._id}`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
 
-      const result = await response.json();
+      // =========================
+      // UPLOAD
+      // =========================
+
+      const response =
+        await fetch(
+          `${API_URL}/api/profile/upload`,
+          {
+            method: "POST",
+            body: formData
+          }
+        );
+
+
+      const result =
+        await response.json();
+
 
       if (!response.ok) {
+
         throw new Error(
           result.message ||
-            "Failed to upload image"
+          "Failed to upload image"
         );
+
       }
 
-      showMessage(
-        result.message ||
-          "Image uploaded successfully!"
+
+      // =========================
+      // IMPORTANT
+      // FULL RENDER URL
+      // =========================
+
+      const uploadedUrl =
+        result.data?.url;
+
+
+      if (!uploadedUrl) {
+
+        throw new Error(
+          "Image URL was not returned by server."
+        );
+
+      }
+
+
+      setProfileImage(
+        uploadedUrl
       );
 
-      // Clear selected file
-      setSelectedFile(null);
 
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      showMessage(
+        "Image uploaded successfully!"
+      );
 
-      // Refresh users
-      await fetchUsers();
+
+      // =========================
+      // CLEAR FILE INPUT
+      // =========================
+
+      e.target.value = "";
+
 
     } catch (error: any) {
 
+      setSelectedFileName("");
+
+      setProfileImage("");
+
+      e.target.value = "";
+
+
       showError(
         error.message ||
-          "Something went wrong"
+        "Image upload failed"
       );
 
     } finally {
 
-      setUploadingImageId(null);
+      setUploadingImage(false);
 
     }
+
   };
 
-  // =====================================================
+
+  // =========================
+  // EDIT USER
+  // =========================
+
+  const handleEdit = (
+    user: User
+  ) => {
+
+    // Do not allow edit during delete
+    if (
+      deletingId ||
+      deletingAll ||
+      loading
+    ) {
+      return;
+    }
+
+
+    setUserName(
+      user.userName
+    );
+
+    setEmail(
+      user.email
+    );
+
+    setRole(
+      user.role
+    );
+
+    setPassword("");
+
+    setProfileImage(
+      user.profileImage || ""
+    );
+
+    setSelectedFileName(
+      user.profileImage
+        ? "Current image"
+        : ""
+    );
+
+    setEditingId(
+      user._id
+    );
+
+
+    setMessage("");
+
+    setError("");
+
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+
+  };
+
+
+  // =========================
   // CREATE / UPDATE USER
-  // =====================================================
+  // =========================
 
   const handleSubmit = async (
-    e: React.FormEvent
+    e: FormEvent
   ) => {
 
     e.preventDefault();
 
-    if (isBusy) {
+
+    // =========================
+    // BLOCK IF BUSY
+    // =========================
+
+    if (
+      deletingId ||
+      deletingAll ||
+      uploadingImage
+    ) {
+
+      showError(
+        "Please wait until the current operation is completed."
+      );
+
       return;
+
     }
 
+
     setMessage("");
+
     setError("");
+
 
     // =========================
     // VALIDATION
@@ -381,7 +625,9 @@ export default function Home() {
       );
 
       return;
+
     }
+
 
     if (
       !editingId &&
@@ -393,157 +639,235 @@ export default function Home() {
       );
 
       return;
+
     }
+
 
     try {
 
       setLoading(true);
 
-      // =================================================
+
+      // =========================
       // UPDATE
-      // =================================================
+      // =========================
 
       if (editingId) {
 
-        setUpdatingId(editingId);
+        setUpdatingId(
+          editingId
+        );
+
 
         const updateData: {
           userName: string;
           email: string;
-          role: "student" | "trainer";
+          role:
+            | "student"
+            | "trainer";
           password?: string;
+          profileImage?: string;
         } = {
-          userName: userName.trim(),
-          email: email.trim(),
+
+          userName:
+            userName.trim(),
+
+          email:
+            email.trim(),
+
           role,
+
+          profileImage:
+            profileImage
+
         };
 
-        if (password.trim()) {
+
+        if (
+          password.trim()
+        ) {
+
           updateData.password =
-            password.trim();
+            password;
+
         }
 
-        const response = await fetch(
-          `${API_URL}/user/update/${editingId}`,
-          {
-            method: "PUT",
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+        const response =
+          await fetch(
+            `${API_URL}/user/update/${editingId}`,
+            {
 
-            body: JSON.stringify(
-              updateData
-            ),
-          }
-        );
+              method: "PUT",
+
+              headers: {
+                "Content-Type":
+                  "application/json"
+              },
+
+              body:
+                JSON.stringify(
+                  updateData
+                )
+
+            }
+          );
+
 
         const result =
           await response.json();
 
+
         if (!response.ok) {
+
           throw new Error(
             result.message ||
-              "Failed to update user"
+            "Failed to update user"
           );
+
         }
+
 
         showMessage(
           result.message ||
-            "User updated successfully!"
+          "User updated successfully!"
         );
+
 
         resetForm();
 
+
         await fetchUsers();
 
+
         return;
+
       }
 
-      // =================================================
+
+      // =========================
       // CREATE
-      // =================================================
+      // =========================
 
-      const response = await fetch(
-        `${API_URL}/user/save`,
-        {
-          method: "POST",
+      const response =
+        await fetch(
+          `${API_URL}/user/save`,
+          {
 
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
+            method: "POST",
 
-          body: JSON.stringify({
-            userName:
-              userName.trim(),
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
 
-            email:
-              email.trim(),
+            body:
+              JSON.stringify({
 
-            password,
+                userName:
+                  userName.trim(),
 
-            role,
-          }),
-        }
-      );
+                email:
+                  email.trim(),
+
+                password,
+
+                role,
+
+                profileImage
+
+              })
+
+          }
+        );
+
 
       const result =
         await response.json();
 
+
       if (!response.ok) {
+
         throw new Error(
           result.message ||
-            "Failed to save user"
+          "Failed to save user"
         );
+
       }
+
 
       showMessage(
         result.message ||
-          "User saved successfully!"
+        "User saved successfully!"
       );
+
 
       resetForm();
 
+
       await fetchUsers();
+
 
     } catch (error: any) {
 
       showError(
         error.message ||
-          "Something went wrong"
+        "Something went wrong"
       );
 
     } finally {
 
       setLoading(false);
+
       setUpdatingId(null);
 
     }
+
   };
 
-  // =====================================================
-  // DELETE USER MODAL
-  // =====================================================
+
+  // =========================
+  // OPEN DELETE MODAL
+  // =========================
 
   const handleDeleteClick = (
     user: User
   ) => {
 
-    if (isBusy) {
+    // =========================
+    // BLOCK DELETE
+    // =========================
+
+    if (
+      editingId ||
+      loading ||
+      deletingAll ||
+      updatingId
+    ) {
+
+      showError(
+        "Delete is disabled while another operation is running."
+      );
+
       return;
+
     }
 
-    setDeleteUser(user);
+
+    setDeleteUser(
+      user
+    );
 
     setMessage("");
+
     setError("");
+
   };
 
-  // =====================================================
-  // DELETE ONE USER
-  // =====================================================
+
+  // =========================
+  // CONFIRM DELETE
+  // =========================
 
   const confirmDelete = async () => {
 
@@ -551,9 +875,6 @@ export default function Home() {
       return;
     }
 
-    if (isBusy) {
-      return;
-    }
 
     try {
 
@@ -562,236 +883,228 @@ export default function Home() {
       );
 
       setMessage("");
+
       setError("");
 
-      const response = await fetch(
-        `${API_URL}/user/delete/${deleteUser._id}`,
-        {
-          method: "DELETE",
-        }
-      );
+
+      const response =
+        await fetch(
+          `${API_URL}/user/delete/${deleteUser._id}`,
+          {
+            method: "DELETE"
+          }
+        );
+
 
       const result =
         await response.json();
 
+
       if (!response.ok) {
+
         throw new Error(
           result.message ||
-            "Failed to delete user"
+          "Failed to delete user"
         );
+
       }
 
-      setDeleteUser(null);
+
+      setDeleteUser(
+        null
+      );
+
 
       showMessage(
         result.message ||
-          "User deleted successfully!"
+        "User deleted successfully!"
       );
+
 
       await fetchUsers();
 
+
     } catch (error: any) {
 
-      setDeleteUser(null);
+      setDeleteUser(
+        null
+      );
+
 
       showError(
         error.message ||
-          "Something went wrong"
+        "Something went wrong"
       );
 
     } finally {
 
-      setDeletingId(null);
+      setDeletingId(
+        null
+      );
 
     }
+
   };
 
-  // =====================================================
-  // DELETE ALL MODAL
-  // =====================================================
+
+  // =========================
+  // OPEN DELETE ALL MODAL
+  // =========================
 
   const handleDeleteAllClick = () => {
 
-    if (isBusy) {
+    // =========================
+    // BLOCK DELETE ALL
+    // =========================
+
+    if (
+      editingId ||
+      loading ||
+      deletingId ||
+      updatingId
+    ) {
+
+      showError(
+        "Delete All is disabled while another operation is running."
+      );
+
       return;
+
     }
 
-    if (users.length === 0) {
+
+    if (
+      users.length === 0
+    ) {
 
       showError(
         "There are no users to delete."
       );
 
       return;
+
     }
 
-    setShowDeleteAllModal(true);
+
+    setShowDeleteAllModal(
+      true
+    );
 
     setMessage("");
+
     setError("");
+
   };
 
-  // =====================================================
-  // DELETE ALL USERS
-  // =====================================================
 
-  const confirmDeleteAll = async () => {
+  // =========================
+  // CONFIRM DELETE ALL
+  // =========================
 
-    if (isBusy) {
-      return;
-    }
+  const confirmDeleteAll =
+    async () => {
 
-    try {
+      try {
 
-      setDeletingAll(true);
-
-      setMessage("");
-      setError("");
-
-      const response = await fetch(
-        `${API_URL}/users/delete-all`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      const result =
-        await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.message ||
-            "Failed to delete all users"
+        setDeletingAll(
+          true
         );
+
+        setMessage("");
+
+        setError("");
+
+
+        const response =
+          await fetch(
+            `${API_URL}/users/delete-all`,
+            {
+              method: "DELETE"
+            }
+          );
+
+
+        const result =
+          await response.json();
+
+
+        if (!response.ok) {
+
+          throw new Error(
+            result.message ||
+            "Failed to delete all users"
+          );
+
+        }
+
+
+        setShowDeleteAllModal(
+          false
+        );
+
+
+        resetForm();
+
+
+        showMessage(
+          result.message ||
+          "All users deleted successfully!"
+        );
+
+
+        await fetchUsers();
+
+
+      } catch (error: any) {
+
+        setShowDeleteAllModal(
+          false
+        );
+
+
+        showError(
+          error.message ||
+          "Something went wrong"
+        );
+
+
+      } finally {
+
+        setDeletingAll(
+          false
+        );
+
       }
 
-      setShowDeleteAllModal(false);
+    };
 
-      resetForm();
 
-      showMessage(
-        result.message ||
-          "All users deleted successfully!"
-      );
+  // =========================
+  // GLOBAL BUSY STATE
+  // =========================
 
-      await fetchUsers();
+  const isBusy =
+    loading ||
+    deletingAll ||
+    deletingId !== null ||
+    updatingId !== null ||
+    uploadingImage;
 
-    } catch (error: any) {
 
-      setShowDeleteAllModal(false);
-
-      showError(
-        error.message ||
-          "Something went wrong"
-      );
-
-    } finally {
-
-      setDeletingAll(false);
-
-    }
-  };
-
-  // =====================================================
-  // TIME AGO
-  // =====================================================
-
-  const getTimeAgo = (
-    dateString?: string
-  ) => {
-
-    if (!dateString) {
-      return "Date unavailable";
-    }
-
-    const createdDate =
-      new Date(dateString);
-
-    const now = new Date();
-
-    const difference =
-      now.getTime() -
-      createdDate.getTime();
-
-    if (difference < 0) {
-      return "Just now";
-    }
-
-    const seconds =
-      Math.floor(
-        difference / 1000
-      );
-
-    if (seconds < 10) {
-      return "Just now";
-    }
-
-    if (seconds < 60) {
-      return `${seconds} seconds ago`;
-    }
-
-    const minutes =
-      Math.floor(seconds / 60);
-
-    if (minutes < 60) {
-      return `${minutes} ${
-        minutes === 1
-          ? "minute"
-          : "minutes"
-      } ago`;
-    }
-
-    const hours =
-      Math.floor(minutes / 60);
-
-    if (hours < 24) {
-      return `${hours} ${
-        hours === 1
-          ? "hour"
-          : "hours"
-      } ago`;
-    }
-
-    const days =
-      Math.floor(hours / 24);
-
-    if (days < 30) {
-      return `${days} ${
-        days === 1
-          ? "day"
-          : "days"
-      } ago`;
-    }
-
-    const months =
-      Math.floor(days / 30);
-
-    if (months < 12) {
-      return `${months} ${
-        months === 1
-          ? "month"
-          : "months"
-      } ago`;
-    }
-
-    const years =
-      Math.floor(months / 12);
-
-    return `${years} ${
-      years === 1
-        ? "year"
-        : "years"
-    } ago`;
-  };
+  // =========================
+  // RENDER
+  // =========================
 
   return (
+
     <main className="min-h-screen bg-slate-100 px-3 py-6 sm:px-6 sm:py-10">
 
       <div className="mx-auto w-full max-w-6xl">
 
-        {/* =================================================
+
+        {/* =========================
             HEADER
-        ================================================= */}
+        ========================= */}
 
         <div className="mb-7 sm:mb-8">
 
@@ -806,11 +1119,12 @@ export default function Home() {
         </div>
 
 
-        {/* =================================================
-            SUCCESS MESSAGE
-        ================================================= */}
+        {/* =========================
+            SUCCESS
+        ========================= */}
 
         {message && (
+
           <div className="mb-5 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-4 text-sm font-medium text-green-700">
 
             <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-600 text-xs text-white">
@@ -832,14 +1146,16 @@ export default function Home() {
             </button>
 
           </div>
+
         )}
 
 
-        {/* =================================================
-            ERROR MESSAGE
-        ================================================= */}
+        {/* =========================
+            ERROR
+        ========================= */}
 
         {error && (
+
           <div className="mb-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm font-medium text-red-700">
 
             <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-600 text-xs text-white">
@@ -861,35 +1177,45 @@ export default function Home() {
             </button>
 
           </div>
+
         )}
 
 
-        {/* =================================================
+        {/* =========================
             ADD / UPDATE USER
-        ================================================= */}
+        ========================= */}
 
         <section className="mb-7 rounded-2xl bg-white p-4 shadow-sm sm:mb-8 sm:p-6">
 
           <div className="mb-6">
 
             <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
+
               {editingId
                 ? "Update User"
                 : "Add New User"}
+
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
+
               {editingId
                 ? "Update the selected user's information."
                 : "Enter user information to save a new user."}
+
             </p>
 
           </div>
 
 
-          <form onSubmit={handleSubmit}>
+          <form
+            onSubmit={
+              handleSubmit
+            }
+          >
 
             <div className="grid gap-4 sm:gap-5 md:grid-cols-2">
+
 
               {/* USER NAME */}
 
@@ -907,7 +1233,11 @@ export default function Home() {
                       e.target.value
                     )
                   }
-                  disabled={isBusy}
+                  disabled={
+                    deletingId !== null ||
+                    deletingAll ||
+                    uploadingImage
+                  }
                   placeholder="Enter user name"
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100"
                 />
@@ -931,7 +1261,11 @@ export default function Home() {
                       e.target.value
                     )
                   }
-                  disabled={isBusy}
+                  disabled={
+                    deletingId !== null ||
+                    deletingAll ||
+                    uploadingImage
+                  }
                   placeholder="Enter email"
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100"
                 />
@@ -948,9 +1282,11 @@ export default function Home() {
                   Password
 
                   {editingId && (
+
                     <span className="ml-2 text-xs font-normal text-slate-400">
                       Optional
                     </span>
+
                   )}
 
                 </label>
@@ -963,7 +1299,11 @@ export default function Home() {
                       e.target.value
                     )
                   }
-                  disabled={isBusy}
+                  disabled={
+                    deletingId !== null ||
+                    deletingAll ||
+                    uploadingImage
+                  }
                   placeholder={
                     editingId
                       ? "Leave empty to keep current password"
@@ -992,7 +1332,11 @@ export default function Home() {
                         | "trainer"
                     )
                   }
-                  disabled={isBusy}
+                  disabled={
+                    deletingId !== null ||
+                    deletingAll ||
+                    uploadingImage
+                  }
                   className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-700 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100"
                 >
 
@@ -1009,7 +1353,7 @@ export default function Home() {
               </div>
 
 
-              {/* IMAGE */}
+              {/* PROFILE IMAGE */}
 
               <div className="md:col-span-2">
 
@@ -1017,47 +1361,102 @@ export default function Home() {
                   Profile Image
                 </label>
 
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg"
-                  onChange={
-                    handleFileChange
-                  }
-                  disabled={
-                    isBusy ||
-                    editingId !== null
-                  }
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none file:mr-4 file:rounded-lg file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100"
-                />
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+
+                  <label
+                    className={`inline-flex cursor-pointer items-center justify-center rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 ${
+                      isBusy
+                        ? "cursor-not-allowed opacity-50"
+                        : ""
+                    }`}
+                  >
+
+                    {uploadingImage
+                      ? "Uploading..."
+                      : editingId &&
+                          profileImage
+                        ? "Change Image"
+                        : "Select Image"}
+
+                    <input
+                      type="file"
+                      accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                      onChange={
+                        handleImageChange
+                      }
+                      disabled={
+                        isBusy
+                      }
+                      className="hidden"
+                    />
+
+                  </label>
+
+
+                  {selectedFileName && (
+
+                    <span className="break-all text-sm text-slate-500">
+                      {selectedFileName}
+                    </span>
+
+                  )}
+
+                </div>
+
 
                 <p className="mt-2 text-xs text-slate-400">
-                  PNG or JPEG only. Maximum
-                  size: 5 MB. Select an image
-                  after creating a user.
+                  Only PNG and JPEG/JPG files are allowed. Maximum size: 5 MB.
                 </p>
+
+
+                {profileImage && (
+
+                  <div className="mt-3">
+
+                    <a
+                      href={
+                        profileImage
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-semibold text-blue-600 hover:underline"
+                    >
+                      Open current image
+                    </a>
+
+                  </div>
+
+                )}
 
               </div>
 
             </div>
 
 
-            {/* =================================================
-                BUTTONS
-            ================================================= */}
+            {/* =========================
+                FORM BUTTONS
+            ========================= */}
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
 
+
+              {/* SAVE / UPDATE */}
+
               <button
                 type="submit"
-                disabled={isBusy}
+                disabled={
+                  isBusy
+                }
                 className="w-full rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
 
                 {editingId
+
                   ? updatingId
                     ? "Updating..."
                     : "Update User"
+
                   : loading
                     ? "Saving..."
                     : "+ Add User"}
@@ -1065,19 +1464,29 @@ export default function Home() {
               </button>
 
 
+              {/* CANCEL */}
+
               {editingId && (
+
                 <button
                   type="button"
                   onClick={() => {
+
                     resetForm();
+
                     setMessage("");
+
                     setError("");
+
                   }}
-                  disabled={isBusy}
+                  disabled={
+                    isBusy
+                  }
                   className="w-full rounded-xl border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
                   Cancel
                 </button>
+
               )}
 
             </div>
@@ -1087,13 +1496,15 @@ export default function Home() {
         </section>
 
 
-        {/* =================================================
+        {/* =========================
             EXISTING USERS
-        ================================================= */}
+        ========================= */}
 
         <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
 
+
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
 
             <div>
 
@@ -1110,11 +1521,17 @@ export default function Home() {
 
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
 
+
               {/* REFRESH */}
 
               <button
-                onClick={fetchUsers}
-                disabled={isBusy}
+                type="button"
+                onClick={
+                  fetchUsers
+                }
+                disabled={
+                  isBusy
+                }
                 className="w-full rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 Refresh
@@ -1124,12 +1541,14 @@ export default function Home() {
               {/* DELETE ALL */}
 
               <button
+                type="button"
                 onClick={
                   handleDeleteAllClick
                 }
                 disabled={
                   users.length === 0 ||
-                  isBusy
+                  isBusy ||
+                  editingId !== null
                 }
                 className="w-full rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
@@ -1145,9 +1564,12 @@ export default function Home() {
           </div>
 
 
-          {/* USER COUNT */}
+          {/* =========================
+              USER COUNT
+          ========================= */}
 
           {users.length > 0 && (
+
             <div className="mb-5 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
 
               Total Users:{" "}
@@ -1157,23 +1579,31 @@ export default function Home() {
               </span>
 
             </div>
+
           )}
 
 
-          {/* LOADING */}
+          {/* =========================
+              LOADING
+          ========================= */}
 
           {loading &&
             users.length === 0 && (
+
               <div className="py-12 text-center text-sm text-slate-500">
                 Loading users...
               </div>
+
             )}
 
 
-          {/* EMPTY */}
+          {/* =========================
+              EMPTY
+          ========================= */}
 
           {!loading &&
             users.length === 0 && (
+
               <div className="rounded-xl border border-dashed border-slate-300 py-12 text-center">
 
                 <p className="font-semibold text-slate-700">
@@ -1185,17 +1615,20 @@ export default function Home() {
                 </p>
 
               </div>
+
             )}
 
 
-          {/* =================================================
+          {/* =========================
               TABLE
-          ================================================= */}
+          ========================= */}
 
           {users.length > 0 && (
+
             <div className="overflow-x-auto rounded-xl border border-slate-200">
 
-              <table className="w-full min-w-[1050px]">
+              <table className="w-full min-w-[1000px]">
+
 
                 <thead>
 
@@ -1218,10 +1651,6 @@ export default function Home() {
                     </th>
 
                     <th className="px-4 py-4 text-sm font-semibold text-slate-600">
-                      Added
-                    </th>
-
-                    <th className="px-4 py-4 text-sm font-semibold text-slate-600">
                       Actions
                     </th>
 
@@ -1232,263 +1661,159 @@ export default function Home() {
 
                 <tbody>
 
-                  {users.map((user) => (
+                  {users.map(
+                    (user) => (
 
-                    <tr
-                      key={user._id}
-                      className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
-                    >
-
-                      {/* USER */}
-
-                      <td className="px-4 py-5">
-
-                        <div className="font-semibold text-slate-900">
-                          {user.userName}
-                        </div>
-
-                        <div className="mt-1 text-xs text-slate-400">
-                          ID:{" "}
-                          {user._id.slice(
-                            0,
-                            8
-                          )}
-                        </div>
-
-                      </td>
+                      <tr
+                        key={
+                          user._id
+                        }
+                        className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
+                      >
 
 
-                      {/* EMAIL */}
+                        {/* USER */}
 
-                      <td className="px-4 py-5 text-sm text-slate-600">
-                        {user.email}
-                      </td>
+                        <td className="px-4 py-5">
+
+                          <div className="font-semibold text-slate-900">
+                            {user.userName}
+                          </div>
+
+                          <div className="mt-1 text-xs text-slate-400">
+                            ID:{" "}
+                            {user._id.slice(
+                              0,
+                              8
+                            )}
+                          </div>
+
+                          <div className="mt-1 text-xs text-slate-500">
+                            Added{" "}
+                            {timeAgo(
+                              user.createdAt
+                            )}
+                          </div>
+
+                        </td>
 
 
-                      {/* ROLE */}
+                        {/* EMAIL */}
 
-                      <td className="px-4 py-5">
-
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold capitalize text-slate-700">
-                          {user.role}
-                        </span>
-
-                      </td>
+                        <td className="px-4 py-5 text-sm text-slate-600">
+                          {user.email}
+                        </td>
 
 
-                      {/* PROFILE IMAGE */}
+                        {/* ROLE */}
 
-                      <td className="px-4 py-5">
+                        <td className="px-4 py-5">
 
-                        <div className="flex items-center gap-3">
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold capitalize text-slate-700">
+                            {user.role}
+                          </span>
+
+                        </td>
+
+
+                        {/* PROFILE IMAGE */}
+
+                        <td className="px-4 py-5">
 
                           {user.profileImage ? (
-                            <img
-                              src={
-                                user.profileImage
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                window.open(
+                                  user.profileImage,
+                                  "_blank",
+                                  "noopener,noreferrer"
+                                )
                               }
-                              alt={
-                                user.userName
+                              disabled={
+                                isBusy
                               }
-                              className="h-12 w-12 rounded-xl border border-slate-200 object-cover"
-                            />
+                              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              Open Image
+                            </button>
+
                           ) : (
-                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-xs font-semibold text-slate-400">
+
+                            <span className="text-sm text-slate-400">
                               No Image
-                            </div>
+                            </span>
+
                           )}
 
-                          <div className="flex flex-col gap-2">
+                        </td>
 
-                            {user.profileImage && (
-                              <a
-                                href={
-                                  user.profileImage
-                                }
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs font-semibold text-blue-600 hover:text-blue-800"
-                              >
-                                Open Image
-                              </a>
-                            )}
 
-                            {/* Upload */}
+                        {/* ACTIONS */}
 
-                            <label
-                              className={`cursor-pointer text-xs font-semibold ${
-                                isBusy
-                                  ? "cursor-not-allowed text-slate-400"
-                                  : "text-slate-700 hover:text-slate-900"
-                              }`}
+                        <td className="px-4 py-5">
+
+                          <div className="flex flex-wrap gap-2">
+
+
+                            {/* EDIT */}
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleEdit(
+                                  user
+                                )
+                              }
+                              disabled={
+                                isBusy ||
+                                editingId !== null
+                              }
+                              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              Edit
+                            </button>
+
+
+                            {/* DELETE */}
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleDeleteClick(
+                                  user
+                                )
+                              }
+                              disabled={
+                                isBusy ||
+                                editingId !== null
+                              }
+                              className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                             >
 
-                              Select Image
+                              {deletingId ===
+                              user._id
+                                ? "Deleting..."
+                                : "Delete"}
 
-                              <input
-                                type="file"
-                                accept="image/png,image/jpeg"
-                                disabled={
-                                  isBusy
-                                }
-                                onChange={(
-                                  e
-                                ) => {
-
-                                  const file =
-                                    e.target
-                                      .files?.[0];
-
-                                  if (!file) {
-                                    return;
-                                  }
-
-                                  const allowedTypes =
-                                    [
-                                      "image/png",
-                                      "image/jpeg",
-                                    ];
-
-                                  if (
-                                    !allowedTypes.includes(
-                                      file.type
-                                    )
-                                  ) {
-
-                                    showError(
-                                      "Only PNG and JPEG images are allowed."
-                                    );
-
-                                    e.target.value =
-                                      "";
-
-                                    return;
-                                  }
-
-                                  if (
-                                    file.size >
-                                    5 *
-                                      1024 *
-                                      1024
-                                  ) {
-
-                                    showError(
-                                      "File too large! Maximum size is 5 MB."
-                                    );
-
-                                    e.target.value =
-                                      "";
-
-                                    return;
-                                  }
-
-                                  setSelectedFile(
-                                    file
-                                  );
-
-                                  // Upload immediately
-                                  handleUploadImage(
-                                    user
-                                  );
-
-                                }}
-                                className="hidden"
-                              />
-
-                            </label>
+                            </button>
 
                           </div>
 
-                        </div>
+                        </td>
 
-                        {uploadingImageId ===
-                          user._id && (
-                          <p className="mt-2 text-xs font-semibold text-slate-500">
-                            Uploading...
-                          </p>
-                        )}
+                      </tr>
 
-                      </td>
-
-
-                      {/* ADDED TIME */}
-
-                      <td className="px-4 py-5">
-
-                        <div className="text-sm font-semibold text-slate-700">
-                          {getTimeAgo(
-                            user.createdAt
-                          )}
-                        </div>
-
-                        {user.createdAt && (
-                          <div className="mt-1 text-xs text-slate-400">
-                            {new Date(
-                              user.createdAt
-                            ).toLocaleString()}
-                          </div>
-                        )}
-
-                      </td>
-
-
-                      {/* ACTIONS */}
-
-                      <td className="px-4 py-5">
-
-                        <div className="flex flex-wrap gap-2">
-
-                          {/* EDIT */}
-
-                          <button
-                            onClick={() =>
-                              handleEdit(
-                                user
-                              )
-                            }
-                            disabled={
-                              isBusy
-                            }
-                            className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
-                          >
-                            Edit
-                          </button>
-
-
-                          {/* DELETE */}
-
-                          <button
-                            onClick={() =>
-                              handleDeleteClick(
-                                user
-                              )
-                            }
-                            disabled={
-                              isBusy
-                            }
-                            className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
-                          >
-
-                            {deletingId ===
-                            user._id
-                              ? "Deleting..."
-                              : "Delete"}
-
-                          </button>
-
-                        </div>
-
-                      </td>
-
-                    </tr>
-
-                  ))}
+                    )
+                  )}
 
                 </tbody>
 
               </table>
 
             </div>
+
           )}
 
         </section>
@@ -1496,15 +1821,16 @@ export default function Home() {
       </div>
 
 
-      {/* =================================================
+      {/* =====================================================
           DELETE ONE MODAL
-      ================================================= */}
+      ===================================================== */}
 
       {deleteUser && (
 
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 backdrop-blur-sm">
 
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+
 
             <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-xl font-bold text-red-600">
               !
@@ -1517,9 +1843,7 @@ export default function Home() {
 
 
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              Are you sure you want to delete
-              this user? This action cannot be
-              undone.
+              Are you sure you want to delete this user? This action cannot be undone.
             </p>
 
 
@@ -1542,10 +1866,15 @@ export default function Home() {
 
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
 
+
+              {/* CANCEL */}
+
               <button
                 type="button"
                 onClick={() =>
-                  setDeleteUser(null)
+                  setDeleteUser(
+                    null
+                  )
                 }
                 disabled={
                   deletingId !== null
@@ -1555,6 +1884,8 @@ export default function Home() {
                 Cancel
               </button>
 
+
+              {/* CONFIRM */}
 
               <button
                 type="button"
@@ -1567,8 +1898,11 @@ export default function Home() {
                 className="w-full rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
 
-                {deletingId !== null
+                {deletingId ===
+                deleteUser._id
+
                   ? "Deleting..."
+
                   : "Yes, Delete User"}
 
               </button>
@@ -1578,18 +1912,20 @@ export default function Home() {
           </div>
 
         </div>
+
       )}
 
 
-      {/* =================================================
+      {/* =====================================================
           DELETE ALL MODAL
-      ================================================= */}
+      ===================================================== */}
 
       {showDeleteAllModal && (
 
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 backdrop-blur-sm">
 
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+
 
             <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-xl font-bold text-red-600">
               !
@@ -1602,11 +1938,15 @@ export default function Home() {
 
 
             <p className="mt-2 text-sm leading-6 text-slate-500">
+
               This will permanently delete all{" "}
+
               <span className="font-bold text-red-600">
                 {users.length}
               </span>{" "}
+
               users from the database.
+
             </p>
 
 
@@ -1617,14 +1957,16 @@ export default function Home() {
               </p>
 
               <p className="mt-1 text-xs text-red-600">
-                All user records will be
-                permanently removed.
+                All user records will be permanently removed.
               </p>
 
             </div>
 
 
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+
+
+              {/* CANCEL */}
 
               <button
                 type="button"
@@ -1641,6 +1983,8 @@ export default function Home() {
                 Cancel
               </button>
 
+
+              {/* CONFIRM DELETE ALL */}
 
               <button
                 type="button"
@@ -1664,8 +2008,11 @@ export default function Home() {
           </div>
 
         </div>
+
       )}
 
     </main>
+
   );
+
 }
